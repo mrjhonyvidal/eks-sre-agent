@@ -22,10 +22,25 @@ aws --version && sam --version
 # AWS credentials (pick a default region you'll use everywhere)
 aws configure                              # set region e.g. us-east-1
 aws sts get-caller-identity                # confirm
+```
 
-# Python env
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+`aws configure` will prompt for four values:
+
+| Prompt | What to paste | Where to find it |
+|---|---|---|
+| `AWS Access Key ID` | e.g. `AKIA…` | IAM Console → **Users** → your user → **Security credentials** → **Create access key**. For SSO/Identity Center accounts use `aws configure sso` instead and skip the next two prompts. |
+| `AWS Secret Access Key` | e.g. `wJalr…` | Shown **once** at access-key creation time — you cannot retrieve it later. If you don't have it, create a new key. |
+| `Default region name` | `us-east-1` (or wherever Bedrock + your EKS cluster live) | Must be a region where you'll enable Bedrock model access in the next step. |
+| `Default output format` | `json` | `json` is what the rest of this guide assumes. |
+
+> **Using AWS SSO / Identity Center?** Run `aws configure sso` instead and follow the browser prompt. After it completes, every command in this guide should be prefixed with `AWS_PROFILE=<your-sso-profile>` or you can `export AWS_PROFILE=<name>` once per shell.
+
+```bash
+
+# Python env (uv handles any Python >= 3.11; latest is fine)
+brew install uv                            # if you don't have it already
+uv venv && source .venv/bin/activate
+uv pip install -e ".[dev]"
 
 # Local env file (only used for local tests; Lambda reads from SSM)
 cp .env.template .env
