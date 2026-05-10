@@ -119,6 +119,40 @@ Use `.env.template`.
 - `INTENT_USE_LLM` (`false` by default)
 - `INTENT_MODEL_ID` (default: `us.amazon.nova-micro-v1:0`)
 
+## MCP gateway (interactive bot)
+
+The interactive specialist calls Kubernetes tools through an HTTP MCP gateway.
+Set `MCP_GATEWAY_URL` to a service that accepts:
+
+```text
+POST {MCP_GATEWAY_URL}/tools/call
+{ "server": "eks", "tool": "list_pods", "arguments": { "namespace": "api" } }
+```
+
+Tools dispatched today: `list_pods`, `describe_resource`, `get_pod_logs`
+(see `src/sre_agent/interactive/mcp_tools.py`).
+
+If `MCP_GATEWAY_URL` is empty, the bot still answers via the LLM-only fallback —
+useful for a first demo without standing up a gateway. Add an API key with
+`MCP_GATEWAY_API_KEY` if your gateway requires bearer auth.
+
+## Kubectl helper VPC (SSM parameters)
+
+The `KubectlHelperFunction` Lambda runs inside the EKS VPC so it can reach the
+cluster API. Before `make deploy` you must publish three SSM parameters:
+
+```bash
+aws ssm put-parameter --name /eks-ai-ops-toolkit/eks-vpc-id \
+  --value vpc-xxxxxxxx --type String --overwrite
+aws ssm put-parameter --name /eks-ai-ops-toolkit/eks-private-subnet-1 \
+  --value subnet-aaaaaaaa --type String --overwrite
+aws ssm put-parameter --name /eks-ai-ops-toolkit/eks-private-subnet-2 \
+  --value subnet-bbbbbbbb --type String --overwrite
+```
+
+Use private subnets that have a route to the EKS control plane and to NAT for
+pulling Bedrock/STS endpoints.
+
 ## Engineer journey 1: Greenfield (AWS + Slack only)
 
 ### Step 1: Create/configure Slack app
