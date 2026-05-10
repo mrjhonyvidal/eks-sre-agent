@@ -1,302 +1,219 @@
-# EKS SRE Agent 🤖
+# EKS AI Ops Toolkit
 
-[![CI](https://github.com/mrjhonyvidal/eks-sre-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/mrjhonyvidal/eks-sre-agent/actions/workflows/ci.yml)
-[![Coverage](https://codecov.io/gh/mrjhonyvidal/eks-sre-agent/branch/main/graph/badge.svg)](https://codecov.io/gh/mrjhonyvidal/eks-sre-agent)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+Serverless AI operations toolkit for EKS with two reusable capabilities in one repository:
 
-A serverless, AI-powered SRE agent for AWS EKS. It monitors your cluster, performs root cause analysis using Claude or Amazon Bedrock, raises GitHub PRs for auto-fixable issues, and lets your team chat with it via Slack.
+1. **Proactive AI monitoring**: automatic EKS issue detection, analysis, Slack notification, optional GitHub auto-fix PR.
+2. **Interactive Slack bot**: Slack Q&A for EKS troubleshooting using an orchestrator + specialist + MCP-backed tools.
 
----
+Dependency source of truth is `pyproject.toml`.
 
 ## Architecture
 
+### Proactive flow
+
+`EventBridge/CloudWatch/EKS events -> proactive handler -> SRE agent -> Slack + DynamoDB + optional GitHub PR`
+
+### Interactive flow (re:Invent-style semantics)
+
+`Slack Interface -> K8S Orchestrator Agent -> if non-k8s: early exit -> if troubleshooting: K8S Specialist Agent -> MCP/API tools -> Amazon EKS Hosted MCP`
+
+### Concrete code mapping
+
+- Proactive Lambda entrypoint: `sre_agent.proactive.handler.handler`
+- Proactive orchestration: `sre_agent.proactive.flow.ProactiveIncidentFlow`
+- Interactive Lambda entrypoint: `sre_agent.interactive.handler.handler`
+- **K8S Orchestrator Agent**: `sre_agent.interactive.orchestrator.K8sOrchestratorAgent`
+- Intent classifier: `sre_agent.interactive.orchestrator.K8sIntentClassifier`
+- **K8S Specialist Agent**: `sre_agent.interactive.strands_agent.InteractiveEKSAgent`
+- MCP adapter: `sre_agent.interactive.mcp_tools`
+- Backward-compatible wrappers: `sre_agent.handler`, `sre_agent.bot_handler`
+
+## Repository structure
+
+```text
+src/sre_agent/
+  proactive/
+    handler.py
+    flow.py
+  interactive/
+    handler.py
+    orchestrator.py
+    strands_agent.py
+    mcp_tools.py
+  shared/
+    config.py
+    prompts.py
 ```
-CloudWatch Alarms ─┐
-EKS Audit Events  ─┤──► EventBridge ──► SRE Agent Lambda (LLM)
-Scheduled Sweep   ─┘                         │
-                                       ┌──────┴──────┐
-                                       ▼             ▼
-                                   Slack alert   GitHub PR
-                                   + DynamoDB       │
-                                       │        (auto-fix branch)
-                                   user reply
-                                       ▼
-                                  Slack Bot Lambda (LLM)
+
+## Prerequisites
+
+- Python 3.11+
+- AWS account with permissions for Lambda, EventBridge, CloudWatch, DynamoDB, IAM, API Gateway
+- Slack workspace where you can create/install apps
+- Optional:
+  - Bedrock access for Nova/Claude models
+  - Strands SDK (`pip install -e ".[strands]"`)
+  - MCP gateway that exposes EKS tools
+
+## Installation
+
+```bash
+cp .env.template .env
+pip install -e ".[dev]"
 ```
 
----
+Optional specialist backend extras:
 
-## LLM backends
+```bash
+pip install -e ".[strands]"
+```
 
-| Backend | Env var | Auth | Best for |
-|---------|---------|------|----------|
-| **Amazon Bedrock** ⭐ | `LLM_PROVIDER=bedrock` | IAM role | AWS-native; no extra API key; single bill |
-| Anthropic Claude | `LLM_PROVIDER=anthropic` | `ANTHROPIC_API_KEY` | Direct API access |
+## Environment variables
 
-**Bedrock is the recommended choice for AWS deployments.**
-It uses your Lambda IAM execution role — no additional secrets to manage.
+Use `.env.template`.
 
-Supported Bedrock models (set via `BEDROCK_MODEL_ID`):
+### Shared
 
-| Model | Cost | Latency | Use case |
-|-------|------|---------|----------|
-| `us.amazon.nova-lite-v1:0` | $ | Fast | Default — highly cost-effective and capable |
-| `us.anthropic.claude-3-5-haiku-20241022-v1:0` | $ | Fast | Fast Anthropic alternative |
-| `us.amazon.nova-pro-v1:0` | $$ | Medium | Better reasoning for complex issues |
-| `us.anthropic.claude-sonnet-4-5-20250514-v1:0` | $$$ | Medium | Premium model for deepest analysis |
+- `AWS_REGION` (default: `us-east-1`)
+- `LLM_PROVIDER` (`bedrock` or `anthropic`)
+- `BEDROCK_MODEL_ID`
+- `CLUSTER_NAME`
+- `INCIDENT_TABLE`
+- `DEPLOY_TABLE`
 
----
+### Slack
 
-## Key design decisions
+- `SLACK_BOT_TOKEN`
+- `SLACK_CHANNEL`
+- `SLACK_SIGNING_SECRET`
 
-| Decision | Rationale |
-|----------|-----------|
-| Two separate Lambdas | Agent (up to 5 min) and bot (must respond <3s) have very different latency needs |
-| EventBridge as the bus | Decouples sources — add new monitors without touching the agent |
-| DynamoDB for incident state | Gives the bot conversation context; dedup prevents alert storms |
-| Tool-use loop (not MCP) | Simpler deployment — no sidecar infrastructure |
-| Branch `sre/auto-fix-{id}` | PRs are never merged automatically — always require human review |
-| RDS not used | DynamoDB handles all state; no extra cost or operational burden |
+### Proactive flow
 
----
+- `GITHUB_TOKEN`
+- `GITHUB_REPO`
+- `GITHUB_BASE_BRANCH`
+- `KUBECTL_LAMBDA`
 
-## Cost estimate (us-east-1, ~50 incidents/day)
+### Interactive flow
 
-| Component | Est. monthly cost |
-|-----------|-------------------|
-| Lambda (agent, ~30s avg, ARM64) | ~$1.20 |
-| Lambda (bot, ~2s avg, ARM64) | ~$0.15 |
-| DynamoDB (on-demand) | ~$0.50 |
-| Bedrock (Nova Lite, ~2k tokens/incident) | ~$1.50 |
-| **Total (Nova Lite)** | **~$3/month** |
+- `INTERACTIVE_AGENT_BACKEND` (default `strands`)
+- `EKS_MCP_SERVER` (default `eks`)
+- `MCP_GATEWAY_URL`
+- `MCP_GATEWAY_API_KEY` (optional)
+- `INTENT_USE_LLM` (`false` by default)
+- `INTENT_MODEL_ID` (default: `us.amazon.nova-micro-v1:0`)
 
-> Note: To use the premium Claude Sonnet model, expect costs around ~$17/month. Nova Lite is the recommended default for an excellent balance of cost and capability.
+## Engineer journey 1: Greenfield (AWS + Slack only)
 
----
+### Step 1: Create/configure Slack app
 
-## Quick start — one command after envs are set
+1. Create app in Slack API console.
+2. Add bot scopes:
+   - `chat:write`
+   - `app_mentions:read`
+   - `channels:history`
+3. Enable Event Subscriptions.
+4. Subscribe to `app_mention`.
+5. Enable Interactivity.
+6. Install app into workspace and invite bot to your target channel.
 
-### 1. Store secrets in SSM Parameter Store
+### Step 2: Configure AWS secrets (SSM)
 
-We provide a helpful Makefile target to set this up quickly. You will need:
-- Slack Bot Token and Signing Secret
-- GitHub PAT
+Use helper target:
 
 ```bash
 make setup-ssm
 ```
 
-### 2. Deploy (one command)
+### Step 3: Build and deploy with SAM
 
 ```bash
-# Install SAM CLI (once) if you haven't already
-brew install aws-sam-cli
-
-# Deploy
+make build
 make deploy
 ```
 
-After deploy, copy the `SlackBotEndpoint` from the stack outputs.
+After deploy, capture `SlackBotEndpoint` from stack outputs and set it in:
+- Slack Event Subscriptions Request URL
+- Slack Interactivity Request URL
 
-### 3. Configure Slack app
+### Step 4: Verify end-to-end
 
-1. Create a new app at https://api.slack.com/apps
-2. **OAuth & Permissions** → Bot Token Scopes: `chat:write`, `app_mentions:read`, `channels:history`
-3. **Event Subscriptions** → Enable → paste the `SlackBotEndpoint` URL
-4. Subscribe to bot events: `app_mention`
-5. **Interactivity & Shortcuts** → Enable → same URL
-6. Install the app to your workspace, invite `@SREBot` to `#sre-alerts`
+- Trigger/emit an alarm event and confirm proactive Slack alert appears.
+- Mention bot in thread with EKS question and verify orchestrator route behavior.
 
----
+## Engineer journey 2: Existing EKS project wants SlackBot + AI monitoring
 
-## Deploy via GitHub Actions (CI/CD)
+### Step 1: Keep current EKS; integrate this stack
 
-Set these GitHub repository variables and secrets, then push to `main`:
+- Reuse existing cluster name by passing `ClusterName` parameter on deploy.
+- Reuse existing alarm conventions or route your existing events into EventBridge patterns expected by template.
 
-**Variables** (non-sensitive, set under Settings → Variables):
-```
-EKS_CLUSTER_NAME = my-eks-cluster
-AWS_REGION       = us-east-1
-SLACK_CHANNEL    = #sre-alerts
-GITHUB_REPO      = myorg/k8s-infra
-```
+### Step 2: Connect to existing ops repositories
 
-**Secrets** (sensitive):
-```
-AWS_DEPLOY_ROLE_ARN = arn:aws:iam::123456789012:role/github-deploy-role
-```
+- Set `GITHUB_REPO` to infra repo where you want auto-fix PRs.
+- Keep PR auto-merge disabled; human review remains required.
 
-The deploy workflow (`.github/workflows/deploy.yml`) will:
-1. Authenticate to AWS via OIDC (no static AWS keys)
-2. Pre-fill SAM parameters from GitHub variables
-3. Build and deploy automatically on every push to `main`
+### Step 3: Integrate MCP gateway for interactive troubleshooting
 
-You can also trigger manually with custom values via **Actions → Deploy to AWS → Run workflow**.
+- Point `MCP_GATEWAY_URL` to your existing EKS MCP service.
+- Set `EKS_MCP_SERVER` if your MCP server identifier differs from default.
 
----
+### Step 4: Roll out safely
 
-## Local development & testing
+- Deploy to a non-prod Slack channel first.
+- Validate non-K8s questions are exited by orchestrator.
+- Validate K8s troubleshooting questions route to specialist and use MCP tools.
 
-### Setup
+## Local run and testing
+
+### Run checks
 
 ```bash
-# Install all dependencies (including dev tools)
-pip install -e ".[dev]"
-```
-
-### Run tests
-
-```bash
-# All tests with coverage (must be ≥90%)
-pytest
-
-# Specific module
-pytest tests/test_agent.py -v
-
-# Without coverage (faster iteration)
+ruff check src tests
+python -m compileall src tests
 pytest --no-cov
 ```
 
-### Run linting
+### Run focused architecture tests
 
 ```bash
-ruff check .          # lint
-ruff format --check . # format check
-ruff format .         # auto-format
+pytest --no-cov tests/test_orchestrator.py tests/test_bot_handler.py
 ```
 
-### Local invoke
+### Local proactive invoke example
 
 ```bash
-export LLM_PROVIDER=anthropic  # or bedrock
-export ANTHROPIC_API_KEY=sk-ant-...
-export CLUSTER_NAME=local-test
-export INCIDENT_TABLE=sre-incidents-dev
-export SLACK_BOT_TOKEN=xoxb-...
-export SLACK_CHANNEL=C123ABC
-export GITHUB_TOKEN=github_pat_...
-export GITHUB_REPO=myorg/infra
-
 python -c "
-from sre_agent.handler import handler
+from sre_agent.proactive.handler import handler
 event = {
-    'source': 'aws.cloudwatch',
-    'detail': {
-        'alarmName': 'sre-prod-api-checkout-error-rate-high',
-        'state': {'value': 'ALARM', 'reason': 'Threshold crossed: 15.2% error rate'},
-        'previousState': {'value': 'OK'},
-        'configuration': {},
-    }
+  'source': 'aws.cloudwatch',
+  'detail': {
+    'alarmName': 'sre-prod-api-checkout-error-rate-high',
+    'state': {'value': 'ALARM', 'reason': 'Threshold crossed'},
+    'previousState': {'value': 'OK'},
+    'configuration': {}
+  }
 }
 print(handler(event, None))
 "
 ```
 
----
+### Local observation tip (k9s)
 
-## CloudWatch alarm naming convention
+While testing in a real cluster, use `k9s` to watch pod logs and events in parallel with Slack interactions.
+This makes it easier to verify whether orchestrator routing and specialist troubleshooting outputs match live cluster state.
 
-Name your alarms using this pattern so the enricher can parse them:
-
-```
-sre-{cluster}-{namespace}-{service}-{metric}
-# Examples:
-sre-prod-api-checkout-error-rate-high
-sre-prod-data-postgres-cpu-critical
-```
-
-Or send a custom EventBridge event:
-
-```json
-{
-  "source": "sre.scheduled",
-  "detail": {
-    "cluster": "prod",
-    "check_name": "pod-crashloop-check",
-    "namespace": "api",
-    "resource_type": "pod",
-    "resource_name": "checkout-6f9b4c-xkpj2",
-    "findings": ["CrashLoopBackOff: 8 restarts in 10 minutes"]
-  }
-}
-```
-
----
-
-## Register deployments (optional but recommended)
-
-Add a CI/CD step to write to DynamoDB so the agent can correlate incidents with recent deploys:
-
-```python
-import boto3, time
-from datetime import datetime
-
-boto3.resource("dynamodb").Table("sre-deployments").put_item(Item={
-    "service_name": f"{cluster}/{namespace}/{service}",
-    "deployed_at": datetime.utcnow().isoformat(),
-    "ttl": int(time.time()) + 30 * 86400,
-    "image": image_tag,
-    "deployed_by": git_actor,
-    "commit_sha": git_sha,
-})
-```
-
----
-
-## Using the Slack bot
-
-Once an incident fires, the bot posts a message with:
-- Root cause + severity
-- Runbook checklist
-- Link to the auto-fix PR (if generated)
-- Buttons: **Ask agent**, **Resolve**, **False positive**
-
-Chat with the agent in the thread:
-
-```
-@SREBot what's causing the OOMKill in the checkout pod?
-@SREBot show me the exact kubectl commands to roll back
-@SREBot was there a recent deploy that could have caused this?
-```
-
----
-
-## Extending the agent
-
-### Add a new tool
-
-In `sre_agent/agent.py`, add to `TOOLS` and implement `_tool_<name>`:
-
-```python
-{
-    "name": "get_pagerduty_oncall",
-    "description": "Returns the current on-call engineer for a service.",
-    "input_schema": {
-        "type": "object",
-        "properties": {"service_name": {"type": "string"}},
-        "required": ["service_name"],
-    },
-}
-```
-
-### Add a new event source
-
-In `sre_agent/enricher.py`, add a `_from_*` function and register it in `enrich_event()`.
-
-### Switch LLM model
+## Deploy commands summary
 
 ```bash
-# Use cheapest Bedrock model for cost optimisation
-export LLM_PROVIDER=bedrock
-export BEDROCK_MODEL_ID=us.amazon.nova-lite-v1:0
-
-# Or use Claude Haiku for fast responses
-export BEDROCK_MODEL_ID=us.anthropic.claude-3-5-haiku-20241022-v1:0
+make install
+make test-fast
+make build
+make deploy
 ```
 
----
+If already configured and iterating:
 
-## License
-
-MIT — see [LICENSE](LICENSE).
+```bash
+make deploy-fast
+```

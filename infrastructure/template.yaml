@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: SRE AI Agent — EKS monitoring + Slack bot + GitHub auto-PR
+Description: EKS AI Ops Toolkit — proactive monitoring + interactive Slack orchestrator
 
 # ------------------------------------------------------------------ #
 # Parameters                                                          #
@@ -21,6 +21,27 @@ Parameters:
   GitHubBaseBranch:
     Type: String
     Default: main
+
+  EksMcpServer:
+    Type: String
+    Default: eks
+    Description: MCP server identifier used by the interactive specialist
+
+  McpGatewayUrl:
+    Type: String
+    Default: ""
+    Description: Optional MCP gateway URL for interactive EKS tools
+
+  IntentUseLlm:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable Bedrock-based intent classification for orchestrator
+
+  IntentModelId:
+    Type: String
+    Default: us.amazon.nova-micro-v1:0
+    Description: Bedrock model ID used for interactive intent classification
 
   # Sensitive values — store in SSM Parameter Store / Secrets Manager
   AnthropicApiKeyParam:
@@ -61,6 +82,10 @@ Globals:
         SLACK_SIGNING_SECRET: !Ref SlackSigningSecretParam
         GITHUB_TOKEN: !Ref GitHubTokenParam
         KUBECTL_LAMBDA: !Ref KubectlHelperFunction
+        EKS_MCP_SERVER: !Ref EksMcpServer
+        MCP_GATEWAY_URL: !Ref McpGatewayUrl
+        INTENT_USE_LLM: !Ref IntentUseLlm
+        INTENT_MODEL_ID: !Ref IntentModelId
 
 # ------------------------------------------------------------------ #
 # Resources                                                           #
@@ -261,6 +286,10 @@ Outputs:
   SlackBotEndpoint:
     Description: Paste this URL into your Slack app Event Subscriptions
     Value: !Sub "https://${SlackBotApi}.execute-api.${AWS::Region}.amazonaws.com/prod/slack/events"
+
+  InteractiveOrchestrator:
+    Description: Interactive orchestrator entrypoint in code
+    Value: sre_agent.interactive.orchestrator.K8sOrchestratorAgent
 
   IncidentTableName:
     Value: !Ref IncidentTable
