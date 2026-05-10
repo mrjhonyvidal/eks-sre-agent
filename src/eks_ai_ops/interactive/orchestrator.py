@@ -12,6 +12,7 @@ from eks_ai_ops.interactive.strands_agent import InteractiveEKSAgent
 logger = logging.getLogger(__name__)
 
 K8S_KEYWORDS = {
+    # Direct k8s/eks vocabulary
     "k8s",
     "kubernetes",
     "kubectl",
@@ -21,13 +22,44 @@ K8S_KEYWORDS = {
     "deployment",
     "daemonset",
     "statefulset",
+    "replicaset",
     "namespace",
     "node",
+    "nodes",
     "container",
     "crashloopbackoff",
     "oomkill",
+    "oomkilled",
     "service",
     "ingress",
+    "helm",
+    "hpa",
+    "configmap",
+    "secret",
+    "cluster",
+    # Generic SRE / incident vocabulary — when the user is in an
+    # incident thread, these are virtually always about the cluster.
+    "runbook",
+    "root cause",
+    "rootcause",
+    "incident",
+    "alert",
+    "alarm",
+    "error",
+    "errors",
+    "log",
+    "logs",
+    "restart",
+    "scale",
+    "replica",
+    "replicas",
+    "fix",
+    "why",
+    "failing",
+    "failed",
+    "down",
+    "crash",
+    "crashing",
 }
 
 
@@ -123,7 +155,9 @@ class K8sOrchestratorAgent:
 
     def respond(self, *, question: str, incident_context: dict[str, Any]) -> str:
         decision = self._classifier.classify(question)
-        if not decision.is_k8s:
+        # Inside an incident thread the user has already opted in to a
+        # K8s context — don't gate them out for using natural language.
+        if not decision.is_k8s and not incident_context:
             return (
                 "This request does not look Kubernetes/EKS-related, so I will not run cluster tools. "
                 "Ask an EKS or kubectl troubleshooting question to continue."

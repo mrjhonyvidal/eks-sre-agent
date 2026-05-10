@@ -419,17 +419,36 @@ class SREAgent:
 
     @staticmethod
     def _parse_result(raw: str) -> dict[str, Any]:
-        """Strip markdown fences and parse the JSON response."""
-        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        """Strip markdown fences / chain-of-thought and parse the JSON response."""
+        import re
+
+        # Strip chain-of-thought tags some models leak (Nova, DeepSeek, etc.)
+        cleaned = re.sub(r"<thinking>.*?</thinking>", "", raw, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = re.sub(r"<think>.*?</think>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+        cleaned = cleaned.strip()
+        # Strip markdown code fences
+        cleaned = cleaned.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+
+        # Fast path: whole string is JSON
         try:
-            return json.loads(raw)
+            return json.loads(cleaned)
         except json.JSONDecodeError:
-            logger.error("Could not parse agent output (first 200 chars): %s", raw[:200])
-            return {
-                "root_cause": raw[:500],
-                "severity": "medium",
-                "fix_type": "manual",
-                "fix_description": "Parse error — see raw output in CloudWatch Logs.",
-                "pr_files": [],
-                "runbook_steps": ["Review raw agent output in CloudWatch Logs."],
-            }
+            pass
+
+        # Fallback: extract the first {...} block (greedy on outer braces)
+        match = re.search(r"\{.*\}", cleaned, flags=re.DOTALL)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        logger.error("Could not parse agent output (first 200 chars): %s", raw[:200])
+        return {
+            "root_cause": cleaned[:500] or raw[:500],
+            "severity": "medium",
+            "fix_type": "manual",
+            "fix_description": "Parse error — see raw output in CloudWatch Logs.",
+            "pr_files": [],
+            "runbook_steps": ["Review raw agent output in CloudWatch Logs."],
+        }

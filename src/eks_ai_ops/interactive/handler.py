@@ -41,7 +41,24 @@ def _get_orchestrator() -> K8sOrchestratorAgent:
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     body_raw = event.get("body", "{}")
-    body = json.loads(body_raw)
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
+    content_type = headers.get("content-type", "")
+
+    # Slack sends events as application/json but block_actions /
+    # interactivity payloads as application/x-www-form-urlencoded with
+    # a single "payload" field whose value is JSON.
+    if "application/x-www-form-urlencoded" in content_type:
+        from urllib.parse import parse_qs
+
+        parsed = parse_qs(body_raw)
+        payload = parsed.get("payload", ["{}"])[0]
+        body = json.loads(payload)
+    else:
+        try:
+            body = json.loads(body_raw)
+        except json.JSONDecodeError:
+            logger.warning("Could not parse body as JSON: %s", body_raw[:200])
+            return {"statusCode": 400, "body": "bad request"}
 
     if body.get("type") == "url_verification":
         return {"statusCode": 200, "body": json.dumps({"challenge": body["challenge"]})}
