@@ -166,10 +166,7 @@ def _get_eks_token(cluster_name: str, region: str) -> str:
     signed_url = signer.generate_presigned_url(
         params, region_name=region, expires_in=60, operation_name=""
     )
-    return (
-        "k8s-aws-v1."
-        + base64.urlsafe_b64encode(signed_url.encode()).rstrip(b"=").decode()
-    )
+    return "k8s-aws-v1." + base64.urlsafe_b64encode(signed_url.encode()).rstrip(b"=").decode()
 
 
 def _write_ca_bundle(b64_ca: str) -> str:
