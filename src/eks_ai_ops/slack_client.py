@@ -40,6 +40,38 @@ class SlackClient:
         self.token = os.environ["SLACK_BOT_TOKEN"]
         self.channel = os.environ["SLACK_CHANNEL"]
         self._web = WebClient(token=self.token)
+        # chat.update requires the channel ID (e.g. C0123ABCD), not the
+        # #name. We capture it from the first postMessage response so
+        # downstream update/thread-reply calls work for either format.
+        self._channel_id: str | None = None
+
+    @property
+    def _channel_for_update(self) -> str:
+        if self._channel_id:
+            return self._channel_id
+        if self.channel and not self.channel.startswith("#"):
+            # Already a channel ID (or DM ID) — safe to use directly.
+            return self.channel
+        # Best-effort resolve "#name" → "Cxxxx" using conversations.list.
+        # Requires the channels:read / groups:read scope on the bot token.
+        try:
+            name = self.channel.lstrip("#")
+            cursor = None
+            while True:
+                kwargs: dict[str, Any] = {"limit": 200, "types": "public_channel,private_channel"}
+                if cursor:
+                    kwargs["cursor"] = cursor
+                resp = self._web.conversations_list(**kwargs)
+                for ch in resp.get("channels", []):
+                    if ch.get("name") == name:
+                        self._channel_id = ch["id"]
+                        return self._channel_id
+                cursor = resp.get("response_metadata", {}).get("next_cursor") or None
+                if not cursor:
+                    break
+        except SlackApiError as exc:
+            logger.warning("Could not resolve channel ID for %s: %s", self.channel, exc)
+        return self.channel
 
     # ------------------------------------------------------------------ #
     #  Public                                                              #
@@ -82,6 +114,8 @@ class SlackClient:
             },
         ]
         resp = self._post("chat.postMessage", {"channel": self.channel, "blocks": blocks})
+        if resp.get("channel"):
+            self._channel_id = resp["channel"]
         return resp.get("ts", "")
 
     def update_with_analysis(
@@ -190,7 +224,7 @@ class SlackClient:
 
         self._post(
             "chat.update",
-            {"channel": self.channel, "ts": ts, "blocks": blocks},
+            {"channel": self._channel_for_update, "ts": ts, "blocks": blocks},
         )
 
     def update_error(self, ts: str, error: str) -> None:
@@ -198,7 +232,7 @@ class SlackClient:
         self._post(
             "chat.update",
             {
-                "channel": self.channel,
+                "channel": self._channel_for_update,
                 "ts": ts,
                 "blocks": [
                     {
@@ -216,7 +250,7 @@ class SlackClient:
         """Post a reply inside a thread (used by the bot for follow-up chat)."""
         self._post(
             "chat.postMessage",
-            {"channel": self.channel, "thread_ts": thread_ts, "text": text},
+            {"channel": self._channel_for_update, "thread_ts": thread_ts, "text": text},
         )
 
     # ------------------------------------------------------------------ #

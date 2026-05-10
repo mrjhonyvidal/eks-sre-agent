@@ -43,6 +43,17 @@ Parameters:
     Default: us.amazon.nova-micro-v1:0
     Description: Bedrock model ID used for interactive intent classification
 
+  LlmProvider:
+    Type: String
+    Default: bedrock
+    AllowedValues: ["anthropic", "bedrock"]
+    Description: Which LLM backend the SRE agent uses (bedrock = no API key required)
+
+  BedrockModelId:
+    Type: String
+    Default: us.amazon.nova-lite-v1:0
+    Description: Bedrock model ID used by the SRE agent when LlmProvider=bedrock
+
   # Sensitive values — store in SSM Parameter Store / Secrets Manager
   AnthropicApiKeyParam:
     Type: AWS::SSM::Parameter::Value<String>
@@ -86,6 +97,8 @@ Globals:
         MCP_GATEWAY_URL: !Ref McpGatewayUrl
         INTENT_USE_LLM: !Ref IntentUseLlm
         INTENT_MODEL_ID: !Ref IntentModelId
+        LLM_PROVIDER: !Ref LlmProvider
+        BEDROCK_MODEL_ID: !Ref BedrockModelId
 
 # ------------------------------------------------------------------ #
 # Resources                                                           #
@@ -172,6 +185,11 @@ Resources:
             - Effect: Allow
               Action: lambda:InvokeFunction
               Resource: !GetAtt KubectlHelperFunction.Arn
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:Converse
+              Resource: "*"
       Events:
         CloudWatchAlarmChange:
           Type: EventBridgeRule
@@ -205,6 +223,15 @@ Resources:
             TableName: !Ref IncidentTable
         - DynamoDBCrudPolicy:
             TableName: !Ref IncidentTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - bedrock:Converse
+              Resource: "*"
+            - Effect: Allow
+              Action: lambda:InvokeFunction
+              Resource: !GetAtt KubectlHelperFunction.Arn
       Events:
         SlackEvents:
           Type: HttpApi
