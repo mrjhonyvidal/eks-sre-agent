@@ -1,4 +1,4 @@
-.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-trigger destroy-confirm
+.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-trigger destroy-mcp destroy-confirm
 
 ## ── Install ─────────────────────────────────────────────────────────────────────
 install:  ## Install all dependencies (runtime + dev tools)
@@ -101,7 +101,14 @@ destroy-data:  ## Delete retained DynamoDB tables, SSM params, and Lambda log gr
 destroy-trigger:  ## Delete the throwaway CloudWatch alarm used by Scenario A
 	-aws cloudwatch delete-alarms --region $(REGION) --alarm-names eks-ai-ops-trigger 2>/dev/null
 
-destroy: destroy-trigger destroy-stack destroy-data  ## Nuke everything this project deployed (PROMPTS for confirmation)
+destroy-mcp:  ## Tear down the optional MCP gateway (App Runner, ECR, IAM, access entry, SSM)
+	@if [ -x infrastructure/mcp-gateway/scripts/teardown.sh ]; then \
+	  AWS_REGION=$(REGION) FORCE=1 infrastructure/mcp-gateway/scripts/teardown.sh; \
+	else \
+	  echo "(MCP gateway scripts not present — nothing to do)"; \
+	fi
+
+destroy: destroy-trigger destroy-mcp destroy-stack destroy-data  ## Nuke everything this project deployed (PROMPTS for confirmation)
 	@echo ""
 	@echo "✅ Teardown complete. Verify with:"
 	@echo "    aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) 2>&1 | head -1"

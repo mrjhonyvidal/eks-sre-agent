@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.7
+# Official AWS Labs EKS MCP server (PyPI: awslabs.eks-mcp-server)
+# https://github.com/awslabs/mcp/tree/main/src/eks-mcp-server
+awslabs.eks-mcp-server>=0.1.0
+boto3>=1.34

@@ -122,48 +122,46 @@ Use `.env.template`.
 ## MCP gateway (interactive bot)
 
 The interactive specialist calls Kubernetes tools through an HTTP MCP gateway.
-Set `MCP_GATEWAY_URL` to a service that accepts:
-
-```text
-POST {MCP_GATEWAY_URL}/tools/call
-{ "server": "eks", "tool": "list_pods", "arguments": { "namespace": "api" } }
-```
-
+The bot Lambda POSTs to `${MCP_GATEWAY_URL}/tools/call` with body
+`{"server","tool","arguments"}` and `Authorization: Bearer ${MCP_GATEWAY_API_KEY}`.
 Tools dispatched today: `list_pods`, `describe_resource`, `get_pod_logs`
 (see `src/eks_ai_ops/interactive/mcp_tools.py`).
 
 If `MCP_GATEWAY_URL` is empty, the bot still answers via the LLM-only fallback —
-useful for a first run without standing up a gateway. Add an API key with
-`MCP_GATEWAY_API_KEY` if your gateway requires bearer auth.
+useful for a first run without standing up a gateway.
 
-### Picking a gateway
+### Hosting options & cost (us-east-1)
 
-`MCP_GATEWAY_URL` is **not** an AWS-managed endpoint — it's whatever HTTP
-service speaks the contract above. Options, easiest first:
+| Option | ~Monthly | Setup | Notes |
+|---|---|---|---|
+| **App Runner** (scaffolded) | **~$5–7** | Low | 0.25 vCPU / 0.5 GB; auto HTTPS; IAM-native. **Recommended.** |
+| ECS Fargate + ALB | ~$20+ | Medium | Only if you already run ECS. |
+| EC2 `t4g.nano` + systemd | ~$3 | Medium | Cheapest; you patch and watch it. |
+| Local + ngrok | $0 | Trivial | Demo-only, ephemeral URL. |
 
-1. **AWS Labs `eks-mcp-server`** (recommended) — official open-source MCP
-   server with EKS-aware tools. It speaks MCP-over-stdio out of the box, so
-   you wrap it behind a thin HTTP shim that translates `POST /tools/call` →
-   MCP `tools/call`. Repo: <https://github.com/awslabs/mcp> (see
-   `src/eks-mcp-server/`).
-2. **Self-host the shim on AWS:**
-   - **App Runner** — simplest. Push a container, get an HTTPS URL, point
-     `MCP_GATEWAY_URL` at it.
-   - **ECS Fargate behind ALB** — if you need VPC peering with EKS.
-   - **Lambda + Function URL** — fine for low traffic; cold starts add latency.
-3. **kubectl in-VPC** — `KubectlHelperFunction` already runs inside the EKS
-   VPC and can reach the cluster API. The MCP gateway can delegate to it for
-   real `kubectl` calls (this is how the AWS Labs server talks to the cluster
-   too).
+### Deploy the App Runner gateway
 
-Auth: store any API key in SSM as `/eks-ai-ops-toolkit/mcp-gateway-api-key`
-(SecureString) and add a corresponding parameter mapping to
-`infrastructure/template.yaml` if you want it injected automatically. Until
-then `MCP_GATEWAY_API_KEY` is read from the Lambda environment.
+A turnkey scaffold lives under [`infrastructure/mcp-gateway/`](infrastructure/mcp-gateway/README.md).
+It packages the official AWS Labs `awslabs.eks-mcp-server` behind a small FastAPI
+shim, creates IAM roles + an EKS access entry, deploys to App Runner, and writes
+the two SSM params the bot already reads.
 
-> **Quickest path:** skip the gateway. The Slack bot will answer Kubernetes
-> questions from Bedrock alone. Add the gateway later when you want the bot
-> to actually run `kubectl` against a cluster.
+```bash
+# Dry-run (prints every command without touching AWS)
+./infrastructure/mcp-gateway/scripts/setup.sh
+
+# Real deploy
+DEPLOY=1 ./infrastructure/mcp-gateway/scripts/setup.sh
+
+# Pick up the new env vars in the bot Lambda
+make deploy
+```
+
+Tear down with `make destroy-mcp` (or it runs as part of `make destroy-confirm`).
+
+> **Quickest path:** skip the gateway entirely. The Slack bot will answer
+> Kubernetes questions from Bedrock alone. Add the gateway later when you want
+> the bot to actually run `kubectl` against a cluster.
 
 ## Kubectl helper VPC (SSM parameters)
 
