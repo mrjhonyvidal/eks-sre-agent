@@ -1,0 +1,6 @@
+anthropic>=0.40.0
+boto3>=1.34.0
+# slack_bolt is NOT needed — we use a lightweight direct HTTP approach
+# to keep Lambda layers minimal and avoid dependency bloat.
+# Uncomment below only if you prefer the higher-level Bolt SDK:
+# slack_bolt>=1.18.0
