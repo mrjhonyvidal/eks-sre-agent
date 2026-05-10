@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write   # for coverage comment on PRs
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (Ruff + mypy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Ruff — lint + import sorting
+        run: ruff check . --output-format=github
+
+      - name: Ruff — format check
+        run: ruff format --check .
+
+      - name: mypy — type checking
+        run: mypy src/sre_agent/
+        continue-on-error: true   # informational only until strict coverage is complete
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests with coverage
+        env:
+          # Provide dummy values — real AWS calls are mocked by moto
+          AWS_DEFAULT_REGION: us-east-1
+          AWS_ACCESS_KEY_ID: testing
+          AWS_SECRET_ACCESS_KEY: testing
+          ANTHROPIC_API_KEY: sk-ant-test
+          LLM_PROVIDER: anthropic
+          CLUSTER_NAME: test-cluster
+          INCIDENT_TABLE: sre-incidents-test
+          DEPLOY_TABLE: sre-deployments-test
+          SLACK_BOT_TOKEN: xoxb-test
+          SLACK_CHANNEL: C123TEST
+          SLACK_SIGNING_SECRET: test-secret
+          GITHUB_TOKEN: github_pat_test
+          GITHUB_REPO: testorg/test-repo
+        run: |
+          pytest \
+            --cov=src/sre_agent \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=90 \
+            --cov-branch \
+            -v
+
+      - name: Upload coverage to Codecov
+        if: matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
+
+      - name: Comment coverage on PR
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.12'
+        uses: orgoro/coverage@v3.2
+        with:
+          coverageFile: coverage.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          thresholdAll: 0.90
+
+  deploy-preview:
+    name: SAM build validation
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: SAM build (no-deploy, validates template + code)
+        run: |
+          sam build \
+            --template-file infrastructure/template.yaml \
+            --no-cached \
+            --parallel
+        env:
+          SAM_CLI_TELEMETRY: 0

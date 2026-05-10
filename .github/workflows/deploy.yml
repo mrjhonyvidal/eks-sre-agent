@@ -1,0 +1,97 @@
+name: Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      cluster_name:
+        description: "EKS cluster name to monitor"
+        required: false
+        default: ""
+      slack_channel:
+        description: "Slack channel for alerts (e.g. #sre-alerts)"
+        required: false
+        default: "#sre-alerts"
+      github_repo:
+        description: "GitHub repo for auto-fix PRs (org/repo)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write   # for OIDC-based AWS auth
+  contents: read
+
+jobs:
+  deploy:
+    name: SAM Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install AWS SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Resolve deployment parameters
+        id: params
+        run: |
+          # Use workflow_dispatch inputs if provided, else fall back to GitHub vars
+          CLUSTER="${{ github.event.inputs.cluster_name || vars.EKS_CLUSTER_NAME }}"
+          SLACK="${{ github.event.inputs.slack_channel || vars.SLACK_CHANNEL || '#sre-alerts' }}"
+          REPO="${{ github.event.inputs.github_repo || vars.GITHUB_REPO }}"
+
+          if [ -z "$CLUSTER" ]; then
+            echo "::error::EKS_CLUSTER_NAME must be set as a GitHub variable or workflow input"
+            exit 1
+          fi
+          if [ -z "$REPO" ]; then
+            echo "::error::GITHUB_REPO must be set as a GitHub variable or workflow input"
+            exit 1
+          fi
+
+          echo "cluster=$CLUSTER" >> "$GITHUB_OUTPUT"
+          echo "slack=$SLACK" >> "$GITHUB_OUTPUT"
+          echo "repo=$REPO" >> "$GITHUB_OUTPUT"
+
+      - name: SAM build
+        run: sam build --template-file infrastructure/template.yaml --parallel
+        env:
+          SAM_CLI_TELEMETRY: 0
+
+      - name: SAM deploy
+        run: |
+          sam deploy \
+            --template-file infrastructure/template.yaml \
+            --stack-name sre-agent \
+            --capabilities CAPABILITY_IAM \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --region ${{ vars.AWS_REGION || 'us-east-1' }} \
+            --parameter-overrides \
+              ClusterName="${{ steps.params.outputs.cluster }}" \
+              SlackChannel="${{ steps.params.outputs.slack }}" \
+              GitHubRepo="${{ steps.params.outputs.repo }}"
+        env:
+          SAM_CLI_TELEMETRY: 0
+
+      - name: Show stack outputs
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name sre-agent \
+            --query "Stacks[0].Outputs" \
+            --output table
