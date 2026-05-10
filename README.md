@@ -1,5 +1,7 @@
 # EKS AI Ops Toolkit
 
+AI-powered Ops Toolkit for EKS featuring proactive incident resolution and an interactive Slack chatbot with MCP/Strands tool calling.
+
 Serverless AI operations toolkit for EKS with two reusable capabilities in one repository:
 
 1. **Proactive AI monitoring**: automatic EKS issue detection, analysis, Slack notification, optional GitHub auto-fix PR.
@@ -11,11 +13,25 @@ Dependency source of truth is `pyproject.toml`.
 
 ### Proactive flow
 
-`EventBridge/CloudWatch/EKS events -> proactive handler -> SRE agent -> Slack + DynamoDB + optional GitHub PR`
+```mermaid
+graph LR
+    A[EventBridge / CloudWatch] --> B(Proactive Handler)
+    B --> C[EKS AI Toolkit]
+    C --> D[(DynamoDB Record)]
+    C --> E[Slack Update]
+    C --> F[GitHub PR Auto-fix]
+```
 
 ### Interactive flow (re:Invent-style semantics)
 
-`Slack Interface -> K8S Orchestrator Agent -> if non-k8s: early exit -> if troubleshooting: K8S Specialist Agent -> MCP/API tools -> Amazon EKS Hosted MCP`
+```mermaid
+graph LR
+    A[Slack Interface] --> B(K8S Orchestrator Agent)
+    B --> C{Intent?}
+    C -->|Non-K8s| D[Early Exit]
+    C -->|K8s Troubleshooting| E[K8S Specialist Agent]
+    E <--> F[Amazon EKS Hosted MCP Tools]
+```
 
 ### Concrete code mapping
 
@@ -163,6 +179,32 @@ After deploy, capture `SlackBotEndpoint` from stack outputs and set it in:
 - Deploy to a non-prod Slack channel first.
 - Validate non-K8s questions are exited by orchestrator.
 - Validate K8s troubleshooting questions route to specialist and use MCP tools.
+
+## GitHub Actions (CI/CD)
+
+The repository includes GitHub Actions workflows for continuous integration (`ci.yml`) and automated deployment (`deploy.yml`).
+
+**Note:** By default, these workflows are set to `workflow_dispatch` (disabled from running automatically on push/PR) to prevent unexpected AWS deployments and errors if you are just evaluating the toolkit locally.
+
+### How to Enable and Use Automations
+
+If you want the pipeline to automatically test and deploy your code:
+1. **Enable Triggers:** Edit `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`. Change `on: workflow_dispatch:` to:
+   ```yaml
+   on:
+     push:
+       branches: [ main ]
+     pull_request:
+       branches: [ main ]
+   ```
+2. **Set Secrets in GitHub:** Go to your repository **Settings > Secrets and variables > Actions**.
+   - Add a repository variable `AWS_REGION` (e.g., `us-east-1`).
+   - Add a repository variable `EKS_CLUSTER_NAME`.
+   - Add a repository variable `SLACK_CHANNEL`.
+   - Add a repository variable `GITHUB_REPO`.
+   - Add a repository secret `AWS_DEPLOY_ROLE_ARN` (An IAM Role ARN configured for GitHub OIDC to deploy the SAM stack).
+
+Once configured, the CI pipeline will run Ruff/Pytest on every PR, and the Deploy pipeline will build and update your AWS SAM stack whenever code is merged to `main`.
 
 ## Local run and testing
 
