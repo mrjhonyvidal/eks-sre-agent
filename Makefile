@@ -1,11 +1,11 @@
-.PHONY: install test lint format build deploy clean help
+.PHONY: install test lint format build deploy clean help validate
 
-## ── Install ──────────────────────────────────────────────────────────────
+## ── Install ─────────────────────────────────────────────────────────────────────
 install:  ## Install all dependencies (runtime + dev tools)
 	pip install -e ".[dev]"
 
-## ── Test ─────────────────────────────────────────────────────────────────
-test:  ## Run all tests with coverage (≥90% required)
+## ── Test ────────────────────────────────────────────────────────────────────────
+test:  ## Run all tests with coverage (≥80% required)
 	pytest
 
 test-fast:  ## Run tests without coverage reporting
@@ -35,7 +35,8 @@ typecheck:  ## mypy type checking (informational)
 
 check: lint format-check typecheck  ## Run all code quality checks
 
-## ── Build & Deploy ───────────────────────────────────────────────────────
+## ── Build & Deploy ───────────────────────────────────────────────────────validate:  ## SAM template + Python lint sanity check
+	sam validate --lint --template-file infrastructure/template.yaml
 build:  ## SAM build (validates template + packages Lambda code)
 	sam build --template-file infrastructure/template.yaml --parallel
 
@@ -53,7 +54,7 @@ deploy-fast: build  ## SAM deploy without re-prompting (uses samconfig.toml)
 	  --no-confirm-changeset \
 	  --no-fail-on-empty-changeset
 
-logs-agent:  ## Tail SRE Agent Lambda logs
+logs-agent:  ## Tail proactive SRE Agent Lambda logs
 	aws logs tail /aws/lambda/eks-ai-ops-toolkit --follow
 
 logs-bot:  ## Tail Slack Bot Lambda logs
