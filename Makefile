@@ -35,8 +35,10 @@ typecheck:  ## mypy type checking (informational)
 
 check: lint format-check typecheck  ## Run all code quality checks
 
-## ── Build & Deploy ───────────────────────────────────────────────────────validate:  ## SAM template + Python lint sanity check
+## ── Build & Deploy ───────────────────────────────────────────────────────
+validate:  ## SAM template + Python lint sanity check
 	sam validate --lint --template-file infrastructure/template.yaml
+
 build:  ## SAM build (validates template + packages Lambda code)
 	sam build --template-file infrastructure/template.yaml --parallel
 

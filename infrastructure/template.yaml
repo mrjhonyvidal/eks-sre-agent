@@ -81,7 +81,7 @@ Globals:
         SLACK_BOT_TOKEN: !Ref SlackBotTokenParam
         SLACK_SIGNING_SECRET: !Ref SlackSigningSecretParam
         GITHUB_TOKEN: !Ref GitHubTokenParam
-        KUBECTL_LAMBDA: !Ref KubectlHelperFunction
+        KUBECTL_LAMBDA: sre-kubectl-helper
         EKS_MCP_SERVER: !Ref EksMcpServer
         MCP_GATEWAY_URL: !Ref McpGatewayUrl
         INTENT_USE_LLM: !Ref IntentUseLlm
@@ -96,12 +96,15 @@ Resources:
   IncidentTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: sre-incidents
       BillingMode: PAY_PER_REQUEST
       TableClass: STANDARD_INFREQUENT_ACCESS
       AttributeDefinitions:
         - AttributeName: incident_id
+          AttributeType: S
+        - AttributeName: slack_ts
           AttributeType: S
       KeySchema:
         - AttributeName: incident_id
@@ -116,15 +119,11 @@ Resources:
               KeyType: HASH
           Projection:
             ProjectionType: ALL
-          ProvisionedThroughput:
-            ReadCapacityUnits: 0   # on-demand
-            WriteCapacityUnits: 0
-      # Note: add slack_ts to AttributeDefinitions if you add the GSI above
-      # (shown here for reference — enable when needed)
 
   DeployTable:
     Type: AWS::DynamoDB::Table
     DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: sre-deployments
       BillingMode: PAY_PER_REQUEST
@@ -156,8 +155,14 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref DeployTable
         - CloudWatchReadOnlyAccess
-        - AmazonEKSDescribePolicy: {}   # see inline below
         - Statement:
+            - Effect: Allow
+              Action:
+                - eks:DescribeCluster
+                - eks:ListClusters
+                - eks:DescribeNodegroup
+                - eks:ListNodegroups
+              Resource: !Sub "arn:aws:eks:${AWS::Region}:${AWS::AccountId}:*"
             - Effect: Allow
               Action:
                 - logs:FilterLogEvents
