@@ -174,11 +174,15 @@ aws dynamodb scan --table-name sre-incidents --max-items 5 \
   --query 'Items[].{id:incident_id.S, slack_ts:slack_ts.S}'
 ```
 
-### A.4 Cleanup
+### A.4 Cleanup (cost: $0 — stops billing for this scenario)
+
+Delete the throwaway alarm so it doesn't keep evaluating:
 
 ```bash
-aws cloudwatch delete-alarms --alarm-names demo-eks-cpu-high
+make destroy-demo                        # deletes demo-eks-cpu-high
 ```
+
+If you're done with the whole demo (Scenario A and B), jump straight to **Teardown** at the bottom — that's the one-shot cleanup target.
 
 ---
 
@@ -213,6 +217,13 @@ make logs-bot
 
 You should see the Slack signature verification, the orchestrator log line, and the Bedrock invocation.
 
+### B.4 Cleanup
+
+Nothing scenario-specific to clean up beyond the Slack messages themselves —
+the bot stays available until you run **Teardown** below. Slack app config
+(Event Subscriptions, OAuth scopes) lives in api.slack.com and is free; you can
+leave it or delete the app from <https://api.slack.com/apps>.
+
 ---
 
 ## Troubleshooting quick hits
@@ -227,19 +238,49 @@ You should see the Slack signature verification, the orchestrator log line, and 
 
 ---
 
-## Teardown
+## Teardown — zero ongoing AWS cost
+
+One command nukes every billable resource this project created:
 
 ```bash
-sam delete --stack-name eks-ai-ops-toolkit
-aws ssm delete-parameters --names \
-  /eks-ai-ops-toolkit/slack-bot-token \
-  /eks-ai-ops-toolkit/slack-signing-secret \
-  /eks-ai-ops-toolkit/github-token \
-  /eks-ai-ops-toolkit/anthropic-api-key
-# DynamoDB tables have DeletionPolicy: Retain — drop manually if desired
-aws dynamodb delete-table --table-name sre-incidents
-aws dynamodb delete-table --table-name sre-deployments
+make destroy-confirm                     # prompts before deleting
+# or, non-interactive:
+make destroy                             # same, no prompt
 ```
+
+What that removes:
+
+| Resource | How | Why it matters |
+|---|---|---|
+| CloudFormation stack `eks-ai-ops-toolkit` | `sam delete` | Lambdas, API Gateway, EventBridge rules, security group |
+| DynamoDB tables `sre-incidents`, `sre-deployments` | `aws dynamodb delete-table` | Tables have `DeletionPolicy: Retain`, so `sam delete` leaves them on purpose |
+| SSM parameters under `/eks-ai-ops-toolkit/*` | `aws ssm delete-parameters` | Free, but tidies the namespace |
+| Lambda log groups | `aws logs delete-log-group` | Auto-created by Lambda, **not** managed by CFN, otherwise billed for storage |
+| Demo CloudWatch alarm `demo-eks-cpu-high` | `aws cloudwatch delete-alarms` | First alarm is free; this is just hygiene |
+
+Verify everything is gone:
+
+```bash
+aws cloudformation describe-stacks --stack-name eks-ai-ops-toolkit 2>&1 | head -1
+# expect: "Stack with id eks-ai-ops-toolkit does not exist"
+
+aws dynamodb list-tables | grep -E 'sre-incidents|sre-deployments' || echo "clean"
+aws ssm get-parameters-by-path --path /eks-ai-ops-toolkit --query 'Parameters[].Name'
+```
+
+Different stack name or region? Override:
+
+```bash
+make destroy STACK=my-stack REGION=eu-west-1
+```
+
+> **Bedrock model access** is account-level config and incurs no standing cost
+> — leave it enabled. **EKS clusters** you created with `eksctl create cluster`
+> for the demo are **not** managed by this stack and bill independently:
+>
+> ```bash
+> eksctl delete cluster --name demo --region us-east-1
+> ```
 
 ---
 

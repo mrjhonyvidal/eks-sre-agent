@@ -1,4 +1,4 @@
-.PHONY: install test lint format build deploy clean help validate
+.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-demo destroy-confirm
 
 ## ── Install ─────────────────────────────────────────────────────────────────────
 install:  ## Install all dependencies (runtime + dev tools)
@@ -67,6 +67,49 @@ clean:  ## Remove build artifacts and caches
 	rm -rf .aws-sam/ htmlcov/ .coverage coverage.xml .pytest_cache/ .ruff_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
+
+## ── Demo cleanup (AWS) ────────────────────────────────────────────────────
+# Stack name + region must match `make deploy`. Override on the CLI if needed:
+#   make destroy STACK=my-stack REGION=eu-west-1
+STACK  ?= eks-ai-ops-toolkit
+REGION ?= $(shell aws configure get region 2>/dev/null || echo us-east-1)
+
+destroy-stack:  ## Delete the CloudFormation stack (Lambda, API Gateway, EventBridge, SG)
+	@echo "→ Deleting CloudFormation stack '$(STACK)' in $(REGION)..."
+	sam delete --stack-name $(STACK) --region $(REGION) --no-prompts || true
+
+destroy-data:  ## Delete retained DynamoDB tables, SSM params, and Lambda log groups
+	@echo "→ Deleting DynamoDB tables (DeletionPolicy: Retain)..."
+	-aws dynamodb delete-table --region $(REGION) --table-name sre-incidents   --no-cli-pager 2>/dev/null
+	-aws dynamodb delete-table --region $(REGION) --table-name sre-deployments --no-cli-pager 2>/dev/null
+	@echo "→ Deleting SSM parameters under /eks-ai-ops-toolkit/*..."
+	-aws ssm delete-parameters --region $(REGION) --no-cli-pager --names \
+	  /eks-ai-ops-toolkit/slack-bot-token \
+	  /eks-ai-ops-toolkit/slack-signing-secret \
+	  /eks-ai-ops-toolkit/github-token \
+	  /eks-ai-ops-toolkit/anthropic-api-key \
+	  /eks-ai-ops-toolkit/eks-vpc-id \
+	  /eks-ai-ops-toolkit/eks-private-subnet-1 \
+	  /eks-ai-ops-toolkit/eks-private-subnet-2 2>/dev/null
+	@echo "→ Deleting CloudWatch Lambda log groups..."
+	-aws logs delete-log-group --region $(REGION) --log-group-name /aws/lambda/eks-ai-ops-toolkit 2>/dev/null
+	-aws logs delete-log-group --region $(REGION) --log-group-name /aws/lambda/sre-slack-bot       2>/dev/null
+	-aws logs delete-log-group --region $(REGION) --log-group-name /aws/lambda/sre-kubectl-helper  2>/dev/null
+
+destroy-demo:  ## Delete throwaway demo CloudWatch alarms used by step-by-step.md
+	-aws cloudwatch delete-alarms --region $(REGION) --alarm-names demo-eks-cpu-high 2>/dev/null
+
+destroy: destroy-demo destroy-stack destroy-data  ## Nuke everything this project deployed (PROMPTS for confirmation)
+	@echo ""
+	@echo "✅ Teardown complete. Verify with:"
+	@echo "    aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) 2>&1 | head -1"
+	@echo "    aws dynamodb list-tables --region $(REGION) | grep -E 'sre-incidents|sre-deployments' || echo 'no demo tables'"
+	@echo "    aws ssm get-parameters-by-path --path /eks-ai-ops-toolkit --region $(REGION) --query 'Parameters[].Name'"
+
+destroy-confirm:  ## Same as 'destroy' but ASKS first (recommended)
+	@read -p "Delete stack '$(STACK)' + DynamoDB + SSM + log groups in $(REGION)? [y/N] " yn && \
+	  [ "$$yn" = "y" ] || [ "$$yn" = "Y" ] || (echo "Aborted." && exit 1)
+	@$(MAKE) destroy STACK=$(STACK) REGION=$(REGION)
 
 coverage-html:  ## Open HTML coverage report
 	pytest --cov-report=html --no-cov-on-fail
