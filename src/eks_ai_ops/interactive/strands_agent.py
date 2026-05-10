@@ -3,7 +3,16 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from typing import Any
+
+_THINKING_RE = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
+
+
+def _sanitize(text: str) -> str:
+    """Strip chain-of-thought tags Bedrock models occasionally leak."""
+    cleaned = _THINKING_RE.sub("", text or "").strip()
+    return cleaned or "(no response)"
 
 from eks_ai_ops.interactive.mcp_tools import (
     MCPToolClient,
@@ -79,7 +88,7 @@ class InteractiveEKSAgent:
 
             if not tool_uses:
                 if text_blocks:
-                    return text_blocks[-1].text.strip()
+                    return _sanitize(text_blocks[-1].text)
                 break
 
             tool_results = []

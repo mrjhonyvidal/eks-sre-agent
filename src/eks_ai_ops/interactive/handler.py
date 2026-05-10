@@ -40,7 +40,18 @@ def _get_orchestrator() -> K8sOrchestratorAgent:
 
 
 def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    body_raw = event.get("body", "{}")
+    body_raw = event.get("body", "{}") or "{}"
+    # API Gateway HTTP API v2 may base64-encode form bodies. Slack signs
+    # the *decoded* bytes, so we have to decode before both signature
+    # verification and form parsing.
+    if event.get("isBase64Encoded"):
+        import base64
+
+        try:
+            body_raw = base64.b64decode(body_raw).decode("utf-8")
+        except Exception:
+            logger.exception("Failed to base64-decode request body")
+            return {"statusCode": 400, "body": "bad request"}
     headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
     content_type = headers.get("content-type", "")
 
@@ -63,7 +74,7 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     if body.get("type") == "url_verification":
         return {"statusCode": 200, "body": json.dumps({"challenge": body["challenge"]})}
 
-    if not _verify_slack_signature(event):
+    if not _verify_slack_signature(event, body_raw):
         return {"statusCode": 401, "body": "Unauthorized"}
 
     if body.get("type") == "event_callback":
@@ -159,14 +170,15 @@ def _post_reply(channel: str, thread_ts: str, text: str) -> None:
     slack.post_thread_reply(thread_ts=thread_ts, text=text)
 
 
-def _verify_slack_signature(event: dict[str, Any]) -> bool:
+def _verify_slack_signature(event: dict[str, Any], body: str | None = None) -> bool:
     signing_secret = os.environ.get("SLACK_SIGNING_SECRET", "")
     if not signing_secret:
         return True
-    headers = event.get("headers", {})
+    headers = {k.lower(): v for k, v in (event.get("headers") or {}).items()}
     ts = headers.get("x-slack-request-timestamp", "0")
     sig_header = headers.get("x-slack-signature", "")
-    body = event.get("body", "")
+    if body is None:
+        body = event.get("body", "") or ""
     try:
         if abs(time.time() - int(ts)) > 300:
             return False
