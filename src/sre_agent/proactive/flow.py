@@ -44,7 +44,9 @@ class ProactiveIncidentFlow:
             return {"statusCode": 500, "body": str(exc), "incident_id": incident_id}
 
         pr_url = self._maybe_open_pr(incident_id=incident_id, incident=incident, analysis=analysis)
-        self._persist(incident_id=incident_id, incident=incident, analysis=analysis, ts=ts, pr_url=pr_url)
+        self._persist(
+            incident_id=incident_id, incident=incident, analysis=analysis, ts=ts, pr_url=pr_url
+        )
         self._slack.update_with_analysis(
             ts=ts,
             incident=incident,

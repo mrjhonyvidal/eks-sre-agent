@@ -109,7 +109,9 @@ def _handle_block_action(body: dict[str, Any]) -> None:
         _post_reply(channel, message_ts, f"<@{user}> marked incident `{incident_id}` as resolved.")
     elif action_id == "false_positive":
         _update_incident_status(incident_id, "false_positive", user)
-        _post_reply(channel, message_ts, f"<@{user}> marked incident `{incident_id}` as false positive.")
+        _post_reply(
+            channel, message_ts, f"<@{user}> marked incident `{incident_id}` as false positive."
+        )
 
 
 def _find_incident_from_thread(thread_ts: str) -> dict[str, Any] | None:
@@ -153,9 +155,12 @@ def _verify_slack_signature(event: dict[str, Any]) -> bool:
             return False
     except ValueError:
         return False
-    expected = "v0=" + hmac.new(
-        signing_secret.encode(),
-        f"v0:{ts}:{body}".encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    expected = (
+        "v0="
+        + hmac.new(
+            signing_secret.encode(),
+            f"v0:{ts}:{body}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+    )
     return hmac.compare_digest(expected, sig_header)

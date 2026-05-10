@@ -124,7 +124,9 @@ def test_deduplication_skips_second_invocation() -> None:
 
     with (
         patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-        patch("sre_agent.proactive.flow.ProactiveIncidentFlow._incident_id", return_value=incident_id),
+        patch(
+            "sre_agent.proactive.flow.ProactiveIncidentFlow._incident_id", return_value=incident_id
+        ),
         patch(
             "sre_agent.proactive.flow.boto3.resource",
             return_value=MagicMock(Table=MagicMock(return_value=table)),

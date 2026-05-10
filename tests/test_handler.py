@@ -23,7 +23,9 @@ class TestHandlerMainFlow:
     def test_happy_path_returns_200(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -60,7 +62,9 @@ class TestHandlerMainFlow:
     def test_duplicate_incident_returns_early(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=True),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=True
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -86,7 +90,9 @@ class TestHandlerMainFlow:
     def test_agent_failure_returns_500(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -116,7 +122,9 @@ class TestHandlerMainFlow:
     def test_auto_pr_created_for_high_severity_auto_fix(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -155,7 +163,9 @@ class TestHandlerMainFlow:
     def test_no_pr_for_manual_fix_type(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -191,7 +201,9 @@ class TestHandlerMainFlow:
     def test_no_pr_for_low_severity_auto_fix(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -227,7 +239,9 @@ class TestHandlerMainFlow:
     def test_pr_failure_does_not_abort_handler(self) -> None:
         with (
             patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
-            patch("sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False),
+            patch(
+                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+            ),
         ):
             mock_enrich.return_value = {
                 "source": "cloudwatch_alarm",
@@ -324,9 +338,7 @@ class TestIsDuplicate:
     def test_recent_incident_is_duplicate(self) -> None:
         recent_ts = datetime.now(UTC).isoformat()
         mock_table = MagicMock()
-        mock_table.get_item.return_value = {
-            "Item": {"incident_id": "abc", "created_at": recent_ts}
-        }
+        mock_table.get_item.return_value = {"Item": {"incident_id": "abc", "created_at": recent_ts}}
         from sre_agent.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
@@ -336,9 +348,7 @@ class TestIsDuplicate:
     def test_old_incident_is_not_duplicate(self) -> None:
         old_ts = datetime.fromtimestamp(time.time() - 7200, tz=UTC).isoformat()
         mock_table = MagicMock()
-        mock_table.get_item.return_value = {
-            "Item": {"incident_id": "old", "created_at": old_ts}
-        }
+        mock_table.get_item.return_value = {"Item": {"incident_id": "old", "created_at": old_ts}}
         from sre_agent.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)

@@ -33,7 +33,9 @@ class InteractiveEKSAgent:
     def answer(self, question: str, incident_context: dict[str, Any]) -> str:
         if self._backend == "strands":
             try:
-                return self._answer_with_strands(question=question, incident_context=incident_context)
+                return self._answer_with_strands(
+                    question=question, incident_context=incident_context
+                )
             except Exception:
                 logger.exception("Strands backend failed, falling back to llm backend")
         return self._answer_with_llm_loop(question=question, incident_context=incident_context)
@@ -71,7 +73,9 @@ class InteractiveEKSAgent:
             )
             tool_uses = [b for b in response.content if b.type == "tool_use"]
             text_blocks = [b for b in response.content if b.type == "text"]
-            messages.append({"role": "assistant", "content": self._serialise_content(response.content)})
+            messages.append(
+                {"role": "assistant", "content": self._serialise_content(response.content)}
+            )
 
             if not tool_uses:
                 if text_blocks:

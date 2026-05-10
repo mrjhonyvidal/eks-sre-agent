@@ -27,9 +27,7 @@ class MCPToolClient:
 
     def call_tool(self, server: str, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         if not self._base_url:
-            return {
-                "error": "MCP gateway not configured. Set MCP_GATEWAY_URL to enable MCP calls."
-            }
+            return {"error": "MCP gateway not configured. Set MCP_GATEWAY_URL to enable MCP calls."}
 
         payload = {"server": server, "tool": tool, "arguments": arguments}
         req = urllib.request.Request(

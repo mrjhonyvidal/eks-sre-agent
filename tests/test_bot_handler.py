@@ -138,7 +138,9 @@ class TestHandleMention:
         from sre_agent.bot_handler import _handle_mention
 
         with (
-            patch("sre_agent.interactive.handler._find_incident_from_thread", return_value={"id": "x"}),
+            patch(
+                "sre_agent.interactive.handler._find_incident_from_thread", return_value={"id": "x"}
+            ),
             patch("sre_agent.interactive.handler._get_orchestrator") as mock_orchestrator_get,
             patch("sre_agent.interactive.handler._post_reply") as mock_reply,
         ):
