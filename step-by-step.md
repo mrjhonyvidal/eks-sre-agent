@@ -46,12 +46,18 @@ uv pip install -e ".[dev]"
 cp .env.template .env
 ```
 
-### Enable Bedrock model access (one-time, in AWS Console)
+### Bedrock model access (auto-enabled)
 
-1. AWS Console → **Bedrock** → **Model access** → **Manage model access**.
-2. Enable **Amazon Nova Lite** (`us.amazon.nova-lite-v1:0`).
-3. (Optional, for interactive intent classifier) enable **Amazon Nova Micro** (`us.amazon.nova-micro-v1:0`).
-4. Wait until status shows **Access granted**.
+AWS retired the **Model access** page in 2026 — Nova Lite, Nova Micro, and other
+serverless foundation models are now **automatically enabled** in commercial
+regions on first invocation. No console step required.
+
+Two caveats:
+
+- **Anthropic models:** first-time users may need to submit a one-page use-case
+  form before access is granted.
+- **AWS Marketplace models:** require a user with Marketplace permissions to
+  invoke once before being available account-wide.
 
 Bedrock keeps the secret count low (no Anthropic API key needed) and is the recommended default.
 
