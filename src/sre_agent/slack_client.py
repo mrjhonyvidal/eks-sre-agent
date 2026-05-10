@@ -1,6 +1,9 @@
 """
 Slack client — posts and updates incident messages using Block Kit.
 
+Wraps the official slack-sdk `WebClient` so we get retry/rate-limit handling,
+`SlackApiError` exceptions, and proper type hints out of the box.
+
 Required env vars:
   SLACK_BOT_TOKEN   — xoxb-… bot OAuth token
   SLACK_CHANNEL     — #sre-alerts (or channel ID)
@@ -8,15 +11,14 @@ Required env vars:
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import urllib.request
 from typing import Any
 
-logger = logging.getLogger(__name__)
+from slack_sdk import WebClient
+from slack_sdk.errors import SlackApiError
 
-SLACK_API = "https://slack.com/api"
+logger = logging.getLogger(__name__)
 
 SEVERITY_COLORS = {
     "critical": "#E53E3E",
@@ -37,6 +39,7 @@ class SlackClient:
     def __init__(self) -> None:
         self.token = os.environ["SLACK_BOT_TOKEN"]
         self.channel = os.environ["SLACK_CHANNEL"]
+        self._web = WebClient(token=self.token)
 
     # ------------------------------------------------------------------ #
     #  Public                                                              #
@@ -220,19 +223,15 @@ class SlackClient:
     #  HTTP helper                                                         #
     # ------------------------------------------------------------------ #
 
-    def _post(self, method: str, payload: dict[str, Any]) -> dict:
-        url = f"{SLACK_API}/{method}"
-        data = json.dumps(payload).encode()
-        req = urllib.request.Request(
-            url,
-            data=data,
-            headers={
-                "Authorization": f"Bearer {self.token}",
-                "Content-Type": "application/json",
-            },
-        )
-        with urllib.request.urlopen(req) as resp:  # noqa: S310
-            result = json.loads(resp.read())
-            if not result.get("ok"):
-                logger.error("Slack API error (%s): %s", method, result)
-            return result
+    def _post(self, method: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Dispatch a Slack Web API call via slack-sdk.
+
+        Kept as a single method so tests can patch `SlackClient._post`
+        regardless of the underlying transport.
+        """
+        try:
+            response = self._web.api_call(method, json=payload)
+        except SlackApiError as exc:
+            logger.error("Slack API error (%s): %s", method, exc.response.data)
+            return dict(exc.response.data)
+        return dict(response.data)

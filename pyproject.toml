@@ -22,6 +22,7 @@ classifiers = [
 dependencies = [
     "anthropic>=0.40.0",
     "boto3>=1.34.0",
+    "slack-sdk>=3.27.0",
 ]
 
 [project.optional-dependencies]
