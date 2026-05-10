@@ -42,7 +42,7 @@ class TestBotHandlerSignatureVerification:
             },
         }
         with patch(
-            "sre_agent.bot_handler.os.environ.get",
+            "sre_agent.interactive.handler.os.environ.get",
             side_effect=lambda k, d="": "test-signing-secret" if k == "SLACK_SIGNING_SECRET" else d,
         ):
             from sre_agent.bot_handler import handler
@@ -88,7 +88,7 @@ class TestBotHandlerSignatureVerification:
         from sre_agent.bot_handler import _verify_slack_signature
 
         event = {"body": "body", "headers": {}}
-        with patch("sre_agent.bot_handler.os") as mock_os:
+        with patch("sre_agent.interactive.handler.os") as mock_os:
             mock_os.environ.get.return_value = ""
             result = _verify_slack_signature(event)
         assert result is True
@@ -99,20 +99,14 @@ class TestHandleMention:
         from sre_agent.bot_handler import _handle_mention
 
         with (
-            patch("sre_agent.bot_handler._find_incident_from_thread") as mock_find,
-            patch("sre_agent.bot_handler.get_llm_client") as mock_llm_factory,
-            patch("sre_agent.bot_handler._post_reply") as mock_reply,
+            patch("sre_agent.interactive.handler._find_incident_from_thread") as mock_find,
+            patch("sre_agent.interactive.handler._get_orchestrator") as mock_orchestrator_get,
+            patch("sre_agent.interactive.handler._post_reply") as mock_reply,
         ):
             mock_find.return_value = {"incident_id": "abc", "analysis": {}}
-            mock_llm = MagicMock()
-            from sre_agent.llm_client import ContentBlock, MessageResponse
-
-            mock_llm.create_message.return_value = MessageResponse(
-                content=[ContentBlock(type="text", text="Here is your answer")],
-                stop_reason="end_turn",
-                model="mock",
-            )
-            mock_llm_factory.return_value = mock_llm
+            mock_orchestrator = MagicMock()
+            mock_orchestrator.respond.return_value = "Here is your answer"
+            mock_orchestrator_get.return_value = mock_orchestrator
 
             _handle_mention(
                 {
@@ -130,8 +124,8 @@ class TestHandleMention:
         from sre_agent.bot_handler import _handle_mention
 
         with (
-            patch("sre_agent.bot_handler._find_incident_from_thread", return_value=None),
-            patch("sre_agent.bot_handler._post_reply") as mock_reply,
+            patch("sre_agent.interactive.handler._find_incident_from_thread", return_value=None),
+            patch("sre_agent.interactive.handler._post_reply") as mock_reply,
         ):
             _handle_mention(
                 {"channel": "C123", "ts": "ts123", "text": "<@UBOT> help", "user": "U456"}
@@ -144,13 +138,13 @@ class TestHandleMention:
         from sre_agent.bot_handler import _handle_mention
 
         with (
-            patch("sre_agent.bot_handler._find_incident_from_thread", return_value={"id": "x"}),
-            patch("sre_agent.bot_handler.get_llm_client") as mock_factory,
-            patch("sre_agent.bot_handler._post_reply") as mock_reply,
+            patch("sre_agent.interactive.handler._find_incident_from_thread", return_value={"id": "x"}),
+            patch("sre_agent.interactive.handler._get_orchestrator") as mock_orchestrator_get,
+            patch("sre_agent.interactive.handler._post_reply") as mock_reply,
         ):
-            mock_llm = MagicMock()
-            mock_llm.create_message.side_effect = RuntimeError("API error")
-            mock_factory.return_value = mock_llm
+            mock_orchestrator = MagicMock()
+            mock_orchestrator.respond.side_effect = RuntimeError("API error")
+            mock_orchestrator_get.return_value = mock_orchestrator
 
             _handle_mention({"channel": "C123", "ts": "ts1", "text": "<@U> question", "user": "U1"})
 
@@ -169,17 +163,17 @@ class TestHandleBlockAction:
     def test_ask_agent_action(self) -> None:
         from sre_agent.bot_handler import _handle_block_action
 
-        with patch("sre_agent.bot_handler._post_reply") as mock_reply:
+        with patch("sre_agent.interactive.handler._post_reply") as mock_reply:
             _handle_block_action(self._action_body("ask_agent"))
 
-        assert "Tag me" in mock_reply.call_args[0][2] or "Sure" in mock_reply.call_args[0][2]
+        assert "Ask any EKS question" in mock_reply.call_args[0][2]
 
     def test_resolve_incident_action(self) -> None:
         from sre_agent.bot_handler import _handle_block_action
 
         with (
-            patch("sre_agent.bot_handler._update_incident_status") as mock_update,
-            patch("sre_agent.bot_handler._post_reply"),
+            patch("sre_agent.interactive.handler._update_incident_status") as mock_update,
+            patch("sre_agent.interactive.handler._post_reply"),
         ):
             _handle_block_action(self._action_body("resolve_incident"))
 
@@ -189,8 +183,8 @@ class TestHandleBlockAction:
         from sre_agent.bot_handler import _handle_block_action
 
         with (
-            patch("sre_agent.bot_handler._update_incident_status") as mock_update,
-            patch("sre_agent.bot_handler._post_reply"),
+            patch("sre_agent.interactive.handler._update_incident_status") as mock_update,
+            patch("sre_agent.interactive.handler._post_reply"),
         ):
             _handle_block_action(self._action_body("false_positive"))
 
@@ -199,7 +193,7 @@ class TestHandleBlockAction:
     def test_unknown_action_is_handled_silently(self) -> None:
         from sre_agent.bot_handler import _handle_block_action
 
-        with patch("sre_agent.bot_handler._post_reply") as mock_reply:
+        with patch("sre_agent.interactive.handler._post_reply") as mock_reply:
             _handle_block_action(self._action_body("unknown_action"))
 
         mock_reply.assert_not_called()
@@ -213,7 +207,7 @@ class TestHandleBlockAction:
             "message": {"ts": "ts"},
             "user": {"id": "U"},
         }
-        with patch("sre_agent.bot_handler._post_reply") as mock_reply:
+        with patch("sre_agent.interactive.handler._post_reply") as mock_reply:
             _handle_block_action(body)
 
         mock_reply.assert_not_called()
@@ -223,7 +217,9 @@ class TestUpdateIncidentStatus:
     def test_updates_dynamodb_item(self) -> None:
         from sre_agent.bot_handler import _update_incident_status
 
-        with patch("sre_agent.bot_handler.incident_table") as mock_table:
+        with patch("sre_agent.interactive.handler._get_incident_table") as mock_table_get:
+            mock_table = MagicMock()
+            mock_table_get.return_value = mock_table
             _update_incident_status("inc_001", "resolved", "U_ACTOR")
 
         mock_table.update_item.assert_called_once()
@@ -235,19 +231,21 @@ class TestUpdateIncidentStatus:
     def test_logs_error_on_dynamodb_failure(self, caplog: pytest.LogCaptureFixture) -> None:
         from sre_agent.bot_handler import _update_incident_status
 
-        with patch("sre_agent.bot_handler.incident_table") as mock_table:
-            mock_table.update_item.side_effect = Exception("DDB error")
-            with caplog.at_level("ERROR", logger="root"):
+        with patch("sre_agent.interactive.handler._get_incident_table") as mock_table_get:
+            mock_table = MagicMock()
+            mock_table.update_item.side_effect = RuntimeError("DDB error")
+            mock_table_get.return_value = mock_table
+            with pytest.raises(RuntimeError):
                 _update_incident_status("inc_bad", "resolved", "U1")
-
-        assert any("inc_bad" in r.message for r in caplog.records)
 
 
 class TestFindIncidentFromThread:
     def test_returns_first_matching_incident(self) -> None:
         from sre_agent.bot_handler import _find_incident_from_thread
 
-        with patch("sre_agent.bot_handler.incident_table") as mock_table:
+        with patch("sre_agent.interactive.handler._get_incident_table") as mock_table_get:
+            mock_table = MagicMock()
+            mock_table_get.return_value = mock_table
             mock_table.scan.return_value = {"Items": [{"incident_id": "abc", "slack_ts": "ts1"}]}
             result = _find_incident_from_thread("ts1")
 
@@ -257,7 +255,9 @@ class TestFindIncidentFromThread:
     def test_returns_none_when_no_items(self) -> None:
         from sre_agent.bot_handler import _find_incident_from_thread
 
-        with patch("sre_agent.bot_handler.incident_table") as mock_table:
+        with patch("sre_agent.interactive.handler._get_incident_table") as mock_table_get:
+            mock_table = MagicMock()
+            mock_table_get.return_value = mock_table
             mock_table.scan.return_value = {"Items": []}
             result = _find_incident_from_thread("ts_missing")
 
@@ -266,7 +266,9 @@ class TestFindIncidentFromThread:
     def test_returns_none_on_exception(self) -> None:
         from sre_agent.bot_handler import _find_incident_from_thread
 
-        with patch("sre_agent.bot_handler.incident_table") as mock_table:
+        with patch("sre_agent.interactive.handler._get_incident_table") as mock_table_get:
+            mock_table = MagicMock()
+            mock_table_get.return_value = mock_table
             mock_table.scan.side_effect = Exception("DDB error")
             result = _find_incident_from_thread("ts_err")
 

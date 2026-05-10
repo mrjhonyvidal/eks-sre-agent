@@ -14,7 +14,8 @@ tests/
 ├── test_handler.py      # Lambda handler — full flow, dedup, PR creation conditions
 ├── test_slack_client.py # Slack Block Kit client
 ├── test_github_client.py # GitHub PR creator — branch, commits, PR
-├── test_bot_handler.py  # Slack bot — mentions, button actions, signature verification
+├── test_bot_handler.py  # Slack bot compatibility entrypoint tests
+├── test_orchestrator.py # K8S orchestrator intent classify + route/exit
 └── test_integration.py  # End-to-end with moto-mocked DynamoDB
 ```
 
@@ -59,7 +60,7 @@ Mock all external services. Fast, no network calls.
 ```bash
 pytest tests/test_enricher.py tests/test_agent.py tests/test_handler.py \
        tests/test_slack_client.py tests/test_github_client.py tests/test_bot_handler.py \
-       tests/test_llm_client.py
+       tests/test_orchestrator.py tests/test_llm_client.py
 ```
 
 ### Integration tests
