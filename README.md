@@ -2,12 +2,14 @@
 
 AI-powered Ops Toolkit for EKS featuring proactive incident resolution and an interactive Slack chatbot with MCP/Strands tool calling.
 
+![Slack Bot Screenshot](./example-slack-bot.png)
+
 Serverless AI operations toolkit for EKS with two reusable capabilities in one repository:
 
 1. **Proactive AI monitoring**: automatic EKS issue detection, analysis, Slack notification, optional GitHub auto-fix PR.
-2. **Interactive Slack bot**: Slack Q&A for EKS troubleshooting using an orchestrator + specialist + MCP-backed tools.
 
-Dependency source of truth is `pyproject.toml`.
+
+2. **Interactive Slack bot**: Slack Q&A for EKS troubleshooting using an orchestrator + specialist + MCP-backed tools.
 
 ## Architecture
 
