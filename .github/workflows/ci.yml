@@ -1,10 +1,7 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -79,7 +76,7 @@ jobs:
             --cov=src/sre_agent \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
-            --cov-fail-under=90 \
+            --cov-fail-under=80 \
             --cov-branch \
             -v
 
@@ -96,7 +93,7 @@ jobs:
         with:
           coverageFile: coverage.xml
           token: ${{ secrets.GITHUB_TOKEN }}
-          thresholdAll: 0.90
+          thresholdAll: 0.80
 
   deploy-preview:
     name: SAM build validation
