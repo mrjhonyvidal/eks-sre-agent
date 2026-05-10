@@ -184,17 +184,16 @@ After deploy, capture `SlackBotEndpoint` from stack outputs and set it in:
 
 The repository includes GitHub Actions workflows for continuous integration (`ci.yml`) and automated deployment (`deploy.yml`).
 
-**Note:** By default, these workflows are set to `workflow_dispatch` (disabled from running automatically on push/PR) to prevent unexpected AWS deployments and errors if you are just evaluating the toolkit locally.
+- **Continuous Integration (`ci.yml`):** Runs automatically on every push and pull request to `main` to run linting and tests.
+- **Automated Deployment (`deploy.yml`):** By default, this workflow is set to `workflow_dispatch` (disabled from running automatically) to prevent unexpected AWS deployments if you are just evaluating the toolkit locally.
 
-### How to Enable and Use Automations
+### How to Enable Automated Deployments
 
-If you want the pipeline to automatically test and deploy your code:
-1. **Enable Triggers:** Edit `.github/workflows/ci.yml` and `.github/workflows/deploy.yml`. Change `on: workflow_dispatch:` to:
+If you want the pipeline to automatically deploy your infrastructure on merge:
+1. **Enable Triggers:** Edit `.github/workflows/deploy.yml`. Change `on: workflow_dispatch:` to:
    ```yaml
    on:
      push:
-       branches: [ main ]
-     pull_request:
        branches: [ main ]
    ```
 2. **Set Secrets in GitHub:** Go to your repository **Settings > Secrets and variables > Actions**.
