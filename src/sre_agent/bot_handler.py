@@ -1,7 +1,14 @@
 """
 Backward-compatible interactive Lambda entrypoint.
 
-The implementation now lives in `sre_agent.interactive.handler`.
+This module is a thin re-export shim. The actual implementation lives in
+`sre_agent.interactive.handler` (Lambda handler), `sre_agent.interactive.orchestrator`
+(intent routing), and `sre_agent.interactive.strands_agent` (specialist agent).
+The SAM template references `bot_handler.handler` here so that existing
+deployments and integrations keep working without code changes.
+
+If you are adding new behaviour, edit the modules under `sre_agent/interactive/`
+rather than this file.
 """
 
 from sre_agent.interactive.handler import _find_incident_from_thread as _find_incident_from_thread

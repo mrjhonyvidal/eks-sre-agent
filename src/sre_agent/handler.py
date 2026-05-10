@@ -1,7 +1,13 @@
 """
 Backward-compatible proactive Lambda entrypoint.
 
-The implementation now lives in `sre_agent.proactive.handler`.
+This module is a thin re-export shim. The actual implementation lives in
+`sre_agent.proactive.handler` (Lambda handler) and `sre_agent.proactive.flow`
+(orchestration). The SAM template references `handler.handler` here so that
+existing deployments and integrations keep working without code changes.
+
+If you are adding new behaviour, edit the modules under `sre_agent/proactive/`
+rather than this file.
 """
 
 from datetime import datetime
