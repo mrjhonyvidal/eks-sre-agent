@@ -88,6 +88,8 @@ destroy-data:  ## Delete retained DynamoDB tables, SSM params, and Lambda log gr
 	  /eks-ai-ops-toolkit/slack-signing-secret \
 	  /eks-ai-ops-toolkit/github-token \
 	  /eks-ai-ops-toolkit/anthropic-api-key \
+	  /eks-ai-ops-toolkit/mcp-gateway-url \
+	  /eks-ai-ops-toolkit/mcp-gateway-api-key \
 	  /eks-ai-ops-toolkit/eks-vpc-id \
 	  /eks-ai-ops-toolkit/eks-private-subnet-1 \
 	  /eks-ai-ops-toolkit/eks-private-subnet-2 2>/dev/null

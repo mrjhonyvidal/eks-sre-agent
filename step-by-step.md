@@ -226,6 +226,104 @@ leave it or delete the app from <https://api.slack.com/apps>.
 
 ---
 
+## Scenario C — Optional: enable the MCP gateway for real `kubectl` calls
+
+Skip this for the first demo. Come back here once Scenarios A and B work end-to-end.
+
+> By default the bot answers from Bedrock only. With an MCP gateway wired in,
+> the specialist can call `list_pods`, `describe_resource`, and `get_pod_logs`
+> against your real cluster.
+
+### C.1 Pick where the gateway runs
+
+`MCP_GATEWAY_URL` is **any HTTPS endpoint** that accepts the contract:
+
+```text
+POST {MCP_GATEWAY_URL}/tools/call
+{ "server": "eks", "tool": "list_pods", "arguments": { "namespace": "api" } }
+```
+
+There's no AWS-managed service that exposes this directly — you host it. The
+shortest path for a demo:
+
+1. **Recommended server:** AWS Labs `eks-mcp-server`
+   <https://github.com/awslabs/mcp/tree/main/src/eks-mcp-server>. It's the
+   official AWS open-source MCP server for EKS and ships the same tool names
+   the bot already calls.
+2. **Recommended host:** AWS App Runner (one container, HTTPS URL out of the
+   box, scales to zero). ECS Fargate + ALB is the alternative if you need VPC
+   peering with the EKS control plane.
+3. **Auth:** generate an API key, store it in SSM, set `MCP_GATEWAY_API_KEY`
+   in the Lambda environment.
+
+For step-by-step deployment, follow the `eks-mcp-server` README in the
+`awslabs/mcp` repo — it's outside the scope of this toolkit.
+
+### C.2 Publish the gateway URL + API key to SSM
+
+```bash
+# URL of your hosted MCP gateway (e.g. App Runner)
+aws ssm put-parameter \
+  --name /eks-ai-ops-toolkit/mcp-gateway-url \
+  --value "https://your-mcp-gateway.example.com" \
+  --type String --overwrite
+
+# Optional bearer token
+aws ssm put-parameter \
+  --name /eks-ai-ops-toolkit/mcp-gateway-api-key \
+  --value "your-api-key" \
+  --type SecureString --overwrite
+```
+
+### C.3 Point the deployed stack at the gateway
+
+The fastest way without touching the SAM template is to update the
+`SlackBotFunction` environment directly:
+
+```bash
+make deploy-fast \
+  --parameter-overrides \
+    McpGatewayUrl="$(aws ssm get-parameter --name /eks-ai-ops-toolkit/mcp-gateway-url --query Parameter.Value --output text)"
+```
+
+Or re-run `make deploy` and answer the `McpGatewayUrl` prompt.
+
+To inject `MCP_GATEWAY_API_KEY` automatically, add a parameter mapping in
+`infrastructure/template.yaml` (see the same section in `README.md` for the
+pattern used by other secrets) and redeploy.
+
+### C.4 Verify the bot is using the gateway
+
+Re-trigger Scenario B with a question that requires real cluster data:
+
+```
+@EKS AI Ops list pods in the kube-system namespace
+```
+
+In `make logs-bot` you should now see `dispatch_eks_mcp_tool` log lines and
+the threaded reply should contain real pod names from your cluster.
+
+If the bot still falls back to a generic textbook answer, the gateway is
+either unset, returning `{"error": ...}`, or unauthorised — check
+`make logs-bot` for the actual error.
+
+### C.5 Cleanup
+
+Cleanup of the gateway itself is **outside this stack** — it lives wherever
+you hosted it (App Runner / Fargate / Lambda). For the toolkit side:
+
+```bash
+aws ssm delete-parameters --names \
+  /eks-ai-ops-toolkit/mcp-gateway-url \
+  /eks-ai-ops-toolkit/mcp-gateway-api-key
+```
+
+The full `make destroy` already removes any `/eks-ai-ops-toolkit/*` SSM
+parameters, so this is only needed if you want to disable MCP without
+tearing down the whole stack.
+
+---
+
 ## Troubleshooting quick hits
 
 | Symptom | Fix |
@@ -235,6 +333,7 @@ leave it or delete the app from <https://api.slack.com/apps>.
 | Bedrock `AccessDeniedException` | Model access not enabled in this region — go back to step 0 |
 | Lambda `ResourceNotFoundException` on SSM | Anthropic param placeholder not created — see step 2 |
 | `make deploy` asks for VPC subnets | The kubectl helper needs them; see the `Kubectl helper VPC` section in `README.md` for the SSM parameter setup |
+| Bot returns generic answers instead of real cluster data | `MCP_GATEWAY_URL` is unset or the gateway is returning errors — see Scenario C |
 
 ---
 
@@ -286,6 +385,6 @@ make destroy STACK=my-stack REGION=eu-west-1
 
 ## Next steps after the demo works
 
-1. Stand up a real MCP gateway and set `McpGatewayUrl` so the interactive bot can run real EKS tool calls (see `README.md` → `MCP gateway`).
+1. Wire up the MCP gateway (Scenario C) so the interactive bot can run real EKS tool calls.
 2. Flip `IntentUseLlm=true` to use Nova Micro for sharper intent classification.
 3. Point `GitHubRepo` at a real infra repo and test the auto-fix PR path.

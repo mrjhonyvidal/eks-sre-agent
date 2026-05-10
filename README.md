@@ -136,6 +136,35 @@ If `MCP_GATEWAY_URL` is empty, the bot still answers via the LLM-only fallback �
 useful for a first demo without standing up a gateway. Add an API key with
 `MCP_GATEWAY_API_KEY` if your gateway requires bearer auth.
 
+### Picking a gateway
+
+`MCP_GATEWAY_URL` is **not** an AWS-managed endpoint — it's whatever HTTP
+service speaks the contract above. Options, easiest first:
+
+1. **AWS Labs `eks-mcp-server`** (recommended) — official open-source MCP
+   server with EKS-aware tools. It speaks MCP-over-stdio out of the box, so
+   you wrap it behind a thin HTTP shim that translates `POST /tools/call` →
+   MCP `tools/call`. Repo: <https://github.com/awslabs/mcp> (see
+   `src/eks-mcp-server/`).
+2. **Self-host the shim on AWS:**
+   - **App Runner** — simplest. Push a container, get an HTTPS URL, point
+     `MCP_GATEWAY_URL` at it.
+   - **ECS Fargate behind ALB** — if you need VPC peering with EKS.
+   - **Lambda + Function URL** — fine for low traffic; cold starts add latency.
+3. **kubectl in-VPC** — for the demo, `KubectlHelperFunction` already runs
+   inside the EKS VPC and can reach the cluster API. The MCP gateway can
+   delegate to it for real `kubectl` calls (this is how the AWS Labs server
+   talks to the cluster too).
+
+Auth: store any API key in SSM as `/eks-ai-ops-toolkit/mcp-gateway-api-key`
+(SecureString) and add a corresponding parameter mapping to
+`infrastructure/template.yaml` if you want it injected automatically. Until
+then `MCP_GATEWAY_API_KEY` is read from the Lambda environment.
+
+> **Quickest path for a demo:** skip the gateway. The Slack bot will answer
+> Kubernetes questions from Bedrock alone. Add the gateway later when you
+> want the bot to actually run `kubectl` against a cluster.
+
 ## Kubectl helper VPC (SSM parameters)
 
 The `KubectlHelperFunction` Lambda runs inside the EKS VPC so it can reach the
