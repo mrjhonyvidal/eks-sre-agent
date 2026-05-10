@@ -346,6 +346,98 @@ tearing down the whole stack.
 
 ---
 
+## After `make deploy` — what you have
+
+Once the SAM stack reaches `CREATE_COMPLETE`, your AWS account has the
+resources below. Run `aws cloudformation describe-stacks --stack-name eks-ai-ops-toolkit --query 'Stacks[0].Outputs' --output table`
+to see your own values.
+
+### Stack outputs (example)
+
+| Output key              | Example value                                                          | What it is                                      |
+| ----------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| `SREAgentFunctionArn`   | `arn:aws:lambda:<region>:<acct>:function:eks-ai-ops-toolkit`           | Proactive Lambda (CloudWatch/EKS event target)  |
+| `SlackBotEndpoint`      | `https://<api-id>.execute-api.<region>.amazonaws.com/prod/slack/events` | Paste this into the Slack app Event Subscriptions Request URL |
+| `IncidentTableName`     | `sre-incidents`                                                        | DynamoDB table of triaged incidents             |
+| `InteractiveOrchestrator` | `K8sOrchestratorAgent`                                                | Specialist routing entry point                  |
+
+### Plug the URL into Slack
+
+1. <https://api.slack.com/apps> → your app → **Event Subscriptions**.
+2. Toggle **Enable Events** on.
+3. **Request URL**: paste `SlackBotEndpoint` from the outputs table.
+   Slack POSTs a `url_verification` challenge — the bot responds with the
+   matching `challenge` and Slack shows a green **Verified** check.
+4. **Subscribe to bot events** → add `app_mention`.
+5. **Save Changes**. If Slack asks you to reinstall the app, accept.
+
+Verify the endpoint yourself any time:
+
+```bash
+curl -X POST $SLACK_BOT_URL \
+  -H "Content-Type: application/json" \
+  -d '{"type":"url_verification","challenge":"hello"}'
+# => {"challenge": "hello"}
+```
+
+### Try the three scenarios
+
+**Scenario A — proactive incident (no Slack click needed):**
+
+```bash
+# Synthesise a CloudWatch ALARM event to the proactive Lambda
+aws lambda invoke --function-name eks-ai-ops-toolkit \
+  --payload fileb://tests/fixtures/cloudwatch_alarm.json \
+  --cli-binary-format raw-in-base64-out /tmp/out.json && cat /tmp/out.json
+```
+
+Watch `#sre-alerts` for the rich Slack card.
+
+**Scenario B — interactive Slack bot:**
+
+```text
+@EKS AI Ops  why is checkout-service crashlooping in prod?
+```
+
+The orchestrator classifies intent, hands off to the specialist, and
+replies in-thread.
+
+**Scenario C — real `kubectl` via MCP gateway (optional):**
+Follow the MCP section above, redeploy with `McpGatewayUrl=https://…`,
+then mention the bot again — it now executes live `kubectl get pods`,
+`describe`, `logs`, etc.
+
+---
+
+## VS Code Copilot quickstart (for anyone cloning this repo)
+
+Open this repo in VS Code, then paste the prompt below into **Copilot
+Chat** (agent mode) to have it walk you through end-to-end:
+
+> I just cloned `eks-ai-ops-toolkit` and opened it in VS Code. Read
+> `step-by-step.md` and `CLAUDE.md`, then guide me through Step 0
+> through Step 4 for **my** AWS account and Slack workspace. Ask me
+> for any values you need (AWS region, Slack channel, GitHub repo,
+> Slack bot token, signing secret, Anthropic key) one prompt at a
+> time. Run the AWS CLI, `uv`, `eksctl`, `make`, and `sam` commands
+> for me, and after each step show what changed and what to verify
+> in the AWS Console or Slack. Stop and ask before any action that
+> creates billable resources (EKS cluster, NAT gateway). When the
+> stack is up, print the four stack outputs as a markdown table and
+> tell me the exact URL to paste into Slack Event Subscriptions.
+
+What Copilot will produce as it works through that prompt:
+
+- A populated `.env` (gitignored) with your Slack/GitHub/Anthropic secrets.
+- Four SSM parameters under `/eks-ai-ops-toolkit/*` (plain `String`,
+  not `SecureString` — CloudFormation `AWS::SSM::Parameter::Value<String>`
+  cannot dereference SecureString).
+- An EKS cluster (`eks-ai-ops` by default) with one `t3.small` node.
+- A SAM stack with three Lambdas, one HTTP API, and two DynamoDB tables.
+- The Slack Event Subscriptions URL, ready to paste and verify.
+
+---
+
 ## Troubleshooting quick hits
 
 | Symptom | Fix |

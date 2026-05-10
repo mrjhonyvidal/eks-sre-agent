@@ -146,8 +146,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: eks-ai-ops-toolkit
-      CodeUri: src/eks_ai_ops/
-      Handler: handler.handler
+      CodeUri: src/
+      Handler: eks_ai_ops.handler.handler
       Description: Analyses EKS/CloudWatch incidents using Claude
       Policies:
         - DynamoDBCrudPolicy:
@@ -197,8 +197,8 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: sre-slack-bot
-      CodeUri: src/eks_ai_ops/
-      Handler: bot_handler.handler
+      CodeUri: src/
+      Handler: eks_ai_ops.bot_handler.handler
       Description: Interactive SRE chat bot via Slack Events API
       Policies:
         - DynamoDBReadPolicy:
