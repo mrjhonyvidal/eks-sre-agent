@@ -1,4 +1,4 @@
-.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-demo destroy-confirm
+.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-trigger destroy-confirm
 
 ## ── Install ─────────────────────────────────────────────────────────────────────
 install:  ## Install all dependencies (runtime + dev tools)
@@ -68,7 +68,7 @@ clean:  ## Remove build artifacts and caches
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
 
-## ── Demo cleanup (AWS) ────────────────────────────────────────────────────
+## ── Teardown (AWS) ─────────────────────────────────────────────────────
 # Stack name + region must match `make deploy`. Override on the CLI if needed:
 #   make destroy STACK=my-stack REGION=eu-west-1
 STACK  ?= eks-ai-ops-toolkit
@@ -98,14 +98,14 @@ destroy-data:  ## Delete retained DynamoDB tables, SSM params, and Lambda log gr
 	-aws logs delete-log-group --region $(REGION) --log-group-name /aws/lambda/sre-slack-bot       2>/dev/null
 	-aws logs delete-log-group --region $(REGION) --log-group-name /aws/lambda/sre-kubectl-helper  2>/dev/null
 
-destroy-demo:  ## Delete throwaway demo CloudWatch alarms used by step-by-step.md
-	-aws cloudwatch delete-alarms --region $(REGION) --alarm-names demo-eks-cpu-high 2>/dev/null
+destroy-trigger:  ## Delete the throwaway CloudWatch alarm used by Scenario A
+	-aws cloudwatch delete-alarms --region $(REGION) --alarm-names eks-ai-ops-trigger 2>/dev/null
 
-destroy: destroy-demo destroy-stack destroy-data  ## Nuke everything this project deployed (PROMPTS for confirmation)
+destroy: destroy-trigger destroy-stack destroy-data  ## Nuke everything this project deployed (PROMPTS for confirmation)
 	@echo ""
 	@echo "✅ Teardown complete. Verify with:"
 	@echo "    aws cloudformation describe-stacks --stack-name $(STACK) --region $(REGION) 2>&1 | head -1"
-	@echo "    aws dynamodb list-tables --region $(REGION) | grep -E 'sre-incidents|sre-deployments' || echo 'no demo tables'"
+	@echo "    aws dynamodb list-tables --region $(REGION) | grep -E 'sre-incidents|sre-deployments' || echo 'no toolkit tables'"
 	@echo "    aws ssm get-parameters-by-path --path /eks-ai-ops-toolkit --region $(REGION) --query 'Parameters[].Name'"
 
 destroy-confirm:  ## Same as 'destroy' but ASKS first (recommended)

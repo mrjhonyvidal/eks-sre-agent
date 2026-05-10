@@ -1,10 +1,11 @@
-# EKS AI Ops Toolkit — First Demo Step-by-Step
+# EKS AI Ops Toolkit — Step-by-Step Walkthrough
 
-> Hands-on walkthrough for running the proactive incident flow and the
-> interactive Slack bot end-to-end on a fresh AWS account + Slack workspace.
+> Hands-on guide for running the proactive incident flow and the interactive
+> Slack bot end-to-end against your EKS cluster. Each scenario below is a
+> usage case of the toolkit — run the ones you need.
 >
 > Repo: `eks-ai-ops-toolkit/`
-> You start with: AWS account, Slack workspace. Nothing else configured.
+> You start with: AWS account, Slack workspace, an EKS cluster (or willingness to create one).
 
 ---
 
@@ -37,7 +38,7 @@ cp .env.template .env
 3. (Optional, for interactive intent classifier) enable **Amazon Nova Micro** (`us.amazon.nova-micro-v1:0`).
 4. Wait until status shows **Access granted**.
 
-You're choosing Bedrock for the demo (one fewer secret than Anthropic API).
+Bedrock keeps the secret count low (no Anthropic API key needed) and is the recommended default.
 
 ### Sanity check
 
@@ -73,7 +74,7 @@ You'll be prompted for:
 - Slack Bot Token → paste `xoxb-...`
 - Slack Signing Secret → paste it
 - GitHub Token → paste `placeholder` (skip for now; only needed for auto-fix PRs in Scenario A)
-- Anthropic API Key → **press Enter to skip** (Bedrock-only demo)
+- Anthropic API Key → **press Enter to skip** (Bedrock-only setup)
 
 Verify:
 ```bash
@@ -100,12 +101,12 @@ make deploy
 Answers:
 - Stack name: `eks-ai-ops-toolkit` (default)
 - Region: same as `aws configure`
-- `ClusterName`: name of an existing EKS cluster (any cluster you have; if none, create a tiny one with `eksctl create cluster --name demo --nodes 1 --node-type t3.small`)
+- `ClusterName`: name of an existing EKS cluster (any cluster you have; if none, create one with `eksctl create cluster --name eks-ai-ops --nodes 1 --node-type t3.small`)
 - `SlackChannel`: `#sre-alerts`
 - `GitHubRepo`: `your-handle/sandbox` (any repo; only used if PR creation is triggered)
 - `GitHubBaseBranch`: `main`
 - `EksMcpServer`: `eks` (default)
-- `McpGatewayUrl`: **leave empty** for first demo
+- `McpGatewayUrl`: **leave empty** for the first run (see Scenario C to enable later)
 - `IntentUseLlm`: `false`
 - `IntentModelId`: default
 - Confirm changes: `y`
@@ -130,7 +131,7 @@ aws cloudformation describe-stacks --stack-name eks-ai-ops-toolkit \
 
 ---
 
-## Scenario A — Proactive incident demo
+## Scenario A — Proactive incident flow
 
 Goal: a CloudWatch alarm flips to ALARM → Lambda runs analysis → Slack message appears.
 
@@ -138,7 +139,7 @@ Goal: a CloudWatch alarm flips to ALARM → Lambda runs analysis → Slack messa
 
 ```bash
 aws cloudwatch put-metric-alarm \
-  --alarm-name demo-eks-cpu-high \
+  --alarm-name eks-ai-ops-trigger \
   --metric-name CPUUtilization \
   --namespace AWS/EC2 \
   --statistic Average \
@@ -153,9 +154,9 @@ aws cloudwatch put-metric-alarm \
 
 ```bash
 aws cloudwatch set-alarm-state \
-  --alarm-name demo-eks-cpu-high \
+  --alarm-name eks-ai-ops-trigger \
   --state-value ALARM \
-  --state-reason "demo trigger"
+  --state-reason "manual trigger"
 ```
 
 ### A.3 Watch it land
@@ -179,18 +180,18 @@ aws dynamodb scan --table-name sre-incidents --max-items 5 \
 Delete the throwaway alarm so it doesn't keep evaluating:
 
 ```bash
-make destroy-demo                        # deletes demo-eks-cpu-high
+make destroy-trigger                     # deletes eks-ai-ops-trigger
 ```
 
-If you're done with the whole demo (Scenario A and B), jump straight to **Teardown** at the bottom — that's the one-shot cleanup target.
+If you're done with both Scenarios A and B, jump straight to **Teardown** at the bottom — that's the one-shot cleanup target.
 
 ---
 
-## Scenario B — Interactive Slack bot demo
+## Scenario B — Interactive Slack bot
 
 Goal: mention the bot in `#sre-alerts` → orchestrator classifies intent → bot replies in thread.
 
-> For this first demo `MCP_GATEWAY_URL` is empty, so the specialist falls back to LLM-only answering (no real `kubectl` calls). That's enough to prove the orchestrator + intent + Bedrock pipeline.
+> By default `MCP_GATEWAY_URL` is empty, so the specialist falls back to LLM-only answering (no real `kubectl` calls). That's enough to exercise the orchestrator + intent + Bedrock pipeline. Wire MCP in via Scenario C when you want real cluster calls.
 
 ### B.1 Test a non-K8s message (early-exit path)
 
@@ -228,7 +229,7 @@ leave it or delete the app from <https://api.slack.com/apps>.
 
 ## Scenario C — Optional: enable the MCP gateway for real `kubectl` calls
 
-Skip this for the first demo. Come back here once Scenarios A and B work end-to-end.
+Skip this on a first run. Come back here once Scenarios A and B work end-to-end.
 
 > By default the bot answers from Bedrock only. With an MCP gateway wired in,
 > the specialist can call `list_pods`, `describe_resource`, and `get_pod_logs`
@@ -244,7 +245,7 @@ POST {MCP_GATEWAY_URL}/tools/call
 ```
 
 There's no AWS-managed service that exposes this directly — you host it. The
-shortest path for a demo:
+shortest path:
 
 1. **Recommended server:** AWS Labs `eks-mcp-server`
    <https://github.com/awslabs/mcp/tree/main/src/eks-mcp-server>. It's the
@@ -355,7 +356,7 @@ What that removes:
 | DynamoDB tables `sre-incidents`, `sre-deployments` | `aws dynamodb delete-table` | Tables have `DeletionPolicy: Retain`, so `sam delete` leaves them on purpose |
 | SSM parameters under `/eks-ai-ops-toolkit/*` | `aws ssm delete-parameters` | Free, but tidies the namespace |
 | Lambda log groups | `aws logs delete-log-group` | Auto-created by Lambda, **not** managed by CFN, otherwise billed for storage |
-| Demo CloudWatch alarm `demo-eks-cpu-high` | `aws cloudwatch delete-alarms` | First alarm is free; this is just hygiene |
+| Throwaway CloudWatch alarm `eks-ai-ops-trigger` | `aws cloudwatch delete-alarms` | First alarm is free; this is just hygiene |
 
 Verify everything is gone:
 
@@ -375,15 +376,15 @@ make destroy STACK=my-stack REGION=eu-west-1
 
 > **Bedrock model access** is account-level config and incurs no standing cost
 > — leave it enabled. **EKS clusters** you created with `eksctl create cluster`
-> for the demo are **not** managed by this stack and bill independently:
+> are **not** managed by this stack and bill independently:
 >
 > ```bash
-> eksctl delete cluster --name demo --region us-east-1
+> eksctl delete cluster --name eks-ai-ops --region us-east-1
 > ```
 
 ---
 
-## Next steps after the demo works
+## Next steps
 
 1. Wire up the MCP gateway (Scenario C) so the interactive bot can run real EKS tool calls.
 2. Flip `IntentUseLlm=true` to use Nova Micro for sharper intent classification.
