@@ -37,7 +37,7 @@ jobs:
         run: ruff format --check .
 
       - name: mypy — type checking
-        run: mypy src/sre_agent/
+        run: mypy src/eks_ai_ops/
         continue-on-error: true   # informational only until strict coverage is complete
 
   test:
@@ -77,7 +77,7 @@ jobs:
           GITHUB_REPO: testorg/test-repo
         run: |
           pytest \
-            --cov=src/sre_agent \
+            --cov=src/eks_ai_ops \
             --cov-report=term-missing \
             --cov-report=xml:coverage.xml \
             --cov-fail-under=80 \

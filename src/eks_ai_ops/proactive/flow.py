@@ -8,11 +8,11 @@ from typing import Any
 
 import boto3
 
-from sre_agent.agent import SREAgent
-from sre_agent.enricher import enrich_event
-from sre_agent.github_client import GitHubClient
-from sre_agent.shared.config import SharedConfig
-from sre_agent.slack_client import SlackClient
+from eks_ai_ops.agent import SREAgent
+from eks_ai_ops.enricher import enrich_event
+from eks_ai_ops.github_client import GitHubClient
+from eks_ai_ops.shared.config import SharedConfig
+from eks_ai_ops.slack_client import SlackClient
 
 logger = logging.getLogger(__name__)
 

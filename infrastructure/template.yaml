@@ -147,7 +147,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: eks-ai-ops-toolkit
-      CodeUri: src/sre_agent/
+      CodeUri: src/eks_ai_ops/
       Handler: handler.handler
       Description: Analyses EKS/CloudWatch incidents using Claude
       Policies:
@@ -192,7 +192,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: sre-slack-bot
-      CodeUri: src/sre_agent/
+      CodeUri: src/eks_ai_ops/
       Handler: bot_handler.handler
       Description: Interactive SRE chat bot via Slack Events API
       Policies:
@@ -289,7 +289,7 @@ Outputs:
 
   InteractiveOrchestrator:
     Description: Interactive orchestrator entrypoint in code
-    Value: sre_agent.interactive.orchestrator.K8sOrchestratorAgent
+    Value: eks_ai_ops.interactive.orchestrator.K8sOrchestratorAgent
 
   IncidentTableName:
     Value: !Ref IncidentTable

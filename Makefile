@@ -31,7 +31,7 @@ format-check:  ## Check formatting without making changes
 	ruff format --check .
 
 typecheck:  ## mypy type checking (informational)
-	mypy src/sre_agent/ || true
+	mypy src/eks_ai_ops/ || true
 
 check: lint format-check typecheck  ## Run all code quality checks
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sre_agent.proactive.flow import ProactiveIncidentFlow
+from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

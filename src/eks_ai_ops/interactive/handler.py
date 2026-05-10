@@ -11,9 +11,9 @@ from typing import Any
 
 import boto3
 
-from sre_agent.interactive.orchestrator import K8sOrchestratorAgent
-from sre_agent.shared.config import SharedConfig
-from sre_agent.slack_client import SlackClient
+from eks_ai_ops.interactive.orchestrator import K8sOrchestratorAgent
+from eks_ai_ops.shared.config import SharedConfig
+from eks_ai_ops.slack_client import SlackClient
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

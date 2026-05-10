@@ -24,8 +24,8 @@ from typing import Any
 
 import boto3
 
-from sre_agent.llm_client import BaseLLMClient, ContentBlock, get_llm_client
-from sre_agent.shared.prompts import PROACTIVE_SYSTEM_PROMPT
+from eks_ai_ops.llm_client import BaseLLMClient, ContentBlock, get_llm_client
+from eks_ai_ops.shared.prompts import PROACTIVE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 

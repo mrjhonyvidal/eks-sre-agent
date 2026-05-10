@@ -22,9 +22,9 @@ class TestHandlerMainFlow:
 
     def test_happy_path_returns_200(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -46,7 +46,7 @@ class TestHandlerMainFlow:
                 "pr_files": [],
                 "runbook_steps": ["Step 1"],
             }
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -61,9 +61,9 @@ class TestHandlerMainFlow:
 
     def test_duplicate_incident_returns_early(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=True
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=True
             ),
         ):
             mock_enrich.return_value = {
@@ -74,7 +74,7 @@ class TestHandlerMainFlow:
                 "resource_name": "checkout",
             }
 
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -89,9 +89,9 @@ class TestHandlerMainFlow:
 
     def test_agent_failure_returns_500(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -106,7 +106,7 @@ class TestHandlerMainFlow:
             mock_agent = MagicMock()
             mock_agent.analyze.side_effect = RuntimeError("Claude API timeout")
 
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -121,9 +121,9 @@ class TestHandlerMainFlow:
 
     def test_auto_pr_created_for_high_severity_auto_fix(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -147,7 +147,7 @@ class TestHandlerMainFlow:
             mock_gh = MagicMock()
             mock_gh.create_fix_pr.return_value = "https://github.com/org/repo/pull/1"
 
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -162,9 +162,9 @@ class TestHandlerMainFlow:
 
     def test_no_pr_for_manual_fix_type(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -186,7 +186,7 @@ class TestHandlerMainFlow:
                 "runbook_steps": [],
             }
             mock_gh = MagicMock()
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -200,9 +200,9 @@ class TestHandlerMainFlow:
 
     def test_no_pr_for_low_severity_auto_fix(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -224,7 +224,7 @@ class TestHandlerMainFlow:
                 "runbook_steps": [],
             }
             mock_gh = MagicMock()
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -238,9 +238,9 @@ class TestHandlerMainFlow:
 
     def test_pr_failure_does_not_abort_handler(self) -> None:
         with (
-            patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+            patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
             patch(
-                "sre_agent.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
+                "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._is_duplicate", return_value=False
             ),
         ):
             mock_enrich.return_value = {
@@ -263,7 +263,7 @@ class TestHandlerMainFlow:
             }
             mock_gh = MagicMock()
             mock_gh.create_fix_pr.side_effect = RuntimeError("GitHub API rate limit")
-            from sre_agent.proactive.flow import ProactiveIncidentFlow
+            from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
             flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
             flow._incident_table = MagicMock()
@@ -278,7 +278,7 @@ class TestHandlerMainFlow:
 
 class TestIncidentId:
     def test_stable_hash_for_same_inputs(self) -> None:
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         incident = {
             "source": "cloudwatch_alarm",
@@ -292,7 +292,7 @@ class TestIncidentId:
         )
 
     def test_different_inputs_produce_different_ids(self) -> None:
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         incident1 = {
             "source": "a",
@@ -313,7 +313,7 @@ class TestIncidentId:
         )
 
     def test_id_is_16_chars(self) -> None:
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         incident = {
             "source": "s",
@@ -329,7 +329,7 @@ class TestIsDuplicate:
     def test_fresh_incident_is_not_duplicate(self) -> None:
         mock_table = MagicMock()
         mock_table.get_item.return_value = {"Item": None}
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
         flow._incident_table = mock_table
@@ -339,7 +339,7 @@ class TestIsDuplicate:
         recent_ts = datetime.now(UTC).isoformat()
         mock_table = MagicMock()
         mock_table.get_item.return_value = {"Item": {"incident_id": "abc", "created_at": recent_ts}}
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
         flow._incident_table = mock_table
@@ -349,7 +349,7 @@ class TestIsDuplicate:
         old_ts = datetime.fromtimestamp(time.time() - 7200, tz=UTC).isoformat()
         mock_table = MagicMock()
         mock_table.get_item.return_value = {"Item": {"incident_id": "old", "created_at": old_ts}}
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
         flow._incident_table = mock_table
@@ -358,7 +358,7 @@ class TestIsDuplicate:
     def test_dynamodb_error_is_not_duplicate(self) -> None:
         mock_table = MagicMock()
         mock_table.get_item.side_effect = Exception("DynamoDB error")
-        from sre_agent.proactive.flow import ProactiveIncidentFlow
+        from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
 
         flow = ProactiveIncidentFlow.__new__(ProactiveIncidentFlow)
         flow._incident_table = mock_table

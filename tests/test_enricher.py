@@ -1,10 +1,10 @@
-"""Unit tests for sre_agent/enricher.py."""
+"""Unit tests for eks_ai_ops/enricher.py."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from sre_agent.enricher import (
+from eks_ai_ops.enricher import (
     _from_cloudwatch,
     _from_eks_audit,
     _from_scheduled,
@@ -17,7 +17,7 @@ class TestEnrichEvent:
     """Tests for the main enrich_event dispatcher."""
 
     def test_cloudwatch_alarm_dispatches_correctly(self, cloudwatch_alarm_event: dict) -> None:
-        with patch("sre_agent.enricher.boto3") as mock_boto3:
+        with patch("eks_ai_ops.enricher.boto3") as mock_boto3:
             mock_cw = MagicMock()
             mock_cw.describe_alarms.return_value = {"MetricAlarms": []}
             mock_boto3.client.return_value = mock_cw
@@ -63,7 +63,7 @@ class TestFromCloudwatch:
         }
         mock_cw = MagicMock()
         mock_cw.describe_alarms.return_value = {"MetricAlarms": []}
-        with patch("sre_agent.enricher.boto3") as mock_boto3:
+        with patch("eks_ai_ops.enricher.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_cw
             result = _from_cloudwatch(raw)
 
@@ -87,7 +87,7 @@ class TestFromCloudwatch:
         }
         mock_cw = MagicMock()
         mock_cw.describe_alarms.return_value = {"MetricAlarms": []}
-        with patch("sre_agent.enricher.boto3") as mock_boto3:
+        with patch("eks_ai_ops.enricher.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_cw
             result = _from_cloudwatch(raw)
 
@@ -115,7 +115,7 @@ class TestFromCloudwatch:
                 }
             ]
         }
-        with patch("sre_agent.enricher.boto3") as mock_boto3:
+        with patch("eks_ai_ops.enricher.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_cw
             result = _from_cloudwatch(raw)
 

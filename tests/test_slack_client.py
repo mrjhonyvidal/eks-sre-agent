@@ -1,4 +1,4 @@
-"""Unit tests for sre_agent/slack_client.py."""
+"""Unit tests for eks_ai_ops/slack_client.py."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sre_agent.slack_client import SlackClient
+from eks_ai_ops.slack_client import SlackClient
 
 
 @pytest.fixture()
@@ -190,7 +190,7 @@ class TestPostHttpHelper:
         mock_response.read.return_value = b'{"ok": false, "error": "channel_not_found"}'
 
         with _patch("urllib.request.urlopen", return_value=mock_response):
-            with caplog.at_level("ERROR", logger="sre_agent.slack_client"):
+            with caplog.at_level("ERROR", logger="eks_ai_ops.slack_client"):
                 result = slack._post("chat.postMessage", {"channel": "CBAD", "text": "hi"})
 
         assert not result["ok"]

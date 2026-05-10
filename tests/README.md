@@ -100,8 +100,8 @@ Use the `mock_llm_client` fixture from `conftest.py`:
 
 ```python
 def test_my_thing(mock_llm_client, sample_incident):
-    from sre_agent.agent import SREAgent
-    with patch("sre_agent.agent.boto3"):
+    from eks_ai_ops.agent import SREAgent
+    with patch("eks_ai_ops.agent.boto3"):
         agent = SREAgent(llm_client=mock_llm_client)
         result = agent.analyze(sample_incident)
     assert result["severity"] == "high"
@@ -155,7 +155,7 @@ def test_github(mock_github_request):
 
 ```python
 def test_my_new_tool(self, mock_llm_client):
-    with patch("sre_agent.agent.boto3"):
+    with patch("eks_ai_ops.agent.boto3"):
         agent = SREAgent(llm_client=mock_llm_client)
         result = agent._tool_my_new_tool(param="value")
     assert "expected_key" in result

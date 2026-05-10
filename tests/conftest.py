@@ -179,7 +179,7 @@ def sample_analysis_manual() -> dict[str, Any]:
 @pytest.fixture()
 def mock_llm_client() -> MagicMock:
     """A MagicMock LLM client that returns a final JSON answer on the first call."""
-    from sre_agent.llm_client import ContentBlock, MessageResponse
+    from eks_ai_ops.llm_client import ContentBlock, MessageResponse
 
     client = MagicMock()
     client.model_id = "mock/test-model"
@@ -220,7 +220,7 @@ def mock_llm_client() -> MagicMock:
 @pytest.fixture()
 def mock_llm_with_tool_call(mock_llm_client: MagicMock) -> MagicMock:
     """LLM client that makes one tool call then returns a final answer."""
-    from sre_agent.llm_client import ContentBlock, MessageResponse
+    from eks_ai_ops.llm_client import ContentBlock, MessageResponse
 
     call_count = 0
 
@@ -308,7 +308,7 @@ def dynamodb_tables() -> None:
 def mock_slack_post() -> Any:
     """Patches SlackClient._post to avoid real HTTP calls."""
     with patch(
-        "sre_agent.slack_client.SlackClient._post",
+        "eks_ai_ops.slack_client.SlackClient._post",
         return_value={"ok": True, "ts": "1234567890.123456"},
     ) as mock:
         yield mock
@@ -333,7 +333,7 @@ def mock_github_request() -> Any:
         return {}
 
     with patch(
-        "sre_agent.github_client.GitHubClient._request",
+        "eks_ai_ops.github_client.GitHubClient._request",
         side_effect=_fake_request,
     ) as mock:
         yield mock

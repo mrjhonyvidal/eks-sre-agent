@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from sre_agent.interactive.orchestrator import K8sIntentClassifier, K8sOrchestratorAgent
+from eks_ai_ops.interactive.orchestrator import K8sIntentClassifier, K8sOrchestratorAgent
 
 
 class TestK8sIntentClassifier:

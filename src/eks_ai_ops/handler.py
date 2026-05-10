@@ -2,22 +2,22 @@
 Backward-compatible proactive Lambda entrypoint.
 
 This module is a thin re-export shim. The actual implementation lives in
-`sre_agent.proactive.handler` (Lambda handler) and `sre_agent.proactive.flow`
+`eks_ai_ops.proactive.handler` (Lambda handler) and `eks_ai_ops.proactive.flow`
 (orchestration). The SAM template references `handler.handler` here so that
 existing deployments and integrations keep working without code changes.
 
-If you are adding new behaviour, edit the modules under `sre_agent/proactive/`
+If you are adding new behaviour, edit the modules under `eks_ai_ops/proactive/`
 rather than this file.
 """
 
 from datetime import datetime
 
-from sre_agent.agent import SREAgent
-from sre_agent.enricher import enrich_event
-from sre_agent.github_client import GitHubClient
-from sre_agent.proactive.flow import ProactiveIncidentFlow
-from sre_agent.proactive.handler import handler as handler
-from sre_agent.slack_client import SlackClient
+from eks_ai_ops.agent import SREAgent
+from eks_ai_ops.enricher import enrich_event
+from eks_ai_ops.github_client import GitHubClient
+from eks_ai_ops.proactive.flow import ProactiveIncidentFlow
+from eks_ai_ops.proactive.handler import handler as handler
+from eks_ai_ops.slack_client import SlackClient
 
 _flow = None
 incident_table = None

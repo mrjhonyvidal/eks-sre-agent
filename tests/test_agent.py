@@ -1,4 +1,4 @@
-"""Unit tests for sre_agent/agent.py — SREAgent class."""
+"""Unit tests for eks_ai_ops/agent.py — SREAgent class."""
 
 from __future__ import annotations
 
@@ -6,20 +6,20 @@ import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-from sre_agent.agent import _FALLBACK_RESPONSE, TOOLS, SREAgent
-from sre_agent.llm_client import ContentBlock, MessageResponse
+from eks_ai_ops.agent import _FALLBACK_RESPONSE, TOOLS, SREAgent
+from eks_ai_ops.llm_client import ContentBlock, MessageResponse
 
 
 class TestSREAgentInit:
     def test_uses_provided_llm_client(self, mock_llm_client: MagicMock) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
         assert agent._llm is mock_llm_client
 
     def test_auto_selects_llm_client_when_not_provided(self) -> None:
         with (
-            patch("sre_agent.agent.get_llm_client") as mock_factory,
-            patch("sre_agent.agent.boto3"),
+            patch("eks_ai_ops.agent.get_llm_client") as mock_factory,
+            patch("eks_ai_ops.agent.boto3"),
         ):
             mock_factory.return_value = MagicMock()
             SREAgent()
@@ -30,7 +30,7 @@ class TestSREAgentAnalyze:
     def test_returns_parsed_json_on_first_response(
         self, mock_llm_client: MagicMock, sample_incident: dict
     ) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             result = agent.analyze(sample_incident)
 
@@ -42,7 +42,7 @@ class TestSREAgentAnalyze:
     def test_executes_tool_call_then_returns_answer(
         self, mock_llm_with_tool_call: MagicMock, sample_incident: dict
     ) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_with_tool_call)
             # Patch the tool so it doesn't hit AWS
             with patch.object(
@@ -55,7 +55,7 @@ class TestSREAgentAnalyze:
 
     def test_returns_fallback_after_max_rounds(self, sample_incident: dict) -> None:
         """Agent should return the fallback dict after MAX_TOOL_ROUNDS with only tool_use blocks."""
-        from sre_agent.llm_client import ContentBlock, MessageResponse
+        from eks_ai_ops.llm_client import ContentBlock, MessageResponse
 
         always_tool = MagicMock()
         always_tool.model_id = "mock/always-tool"
@@ -76,7 +76,7 @@ class TestSREAgentAnalyze:
 
         always_tool.create_message.side_effect = _tool_response
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=always_tool)
             with patch.object(agent, "_tool_list_related_alerts", return_value={}):
                 result = agent.analyze(sample_incident)
@@ -93,7 +93,7 @@ class TestSREAgentAnalyze:
             model="mock",
         )
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=bad_client)
             result = agent.analyze(sample_incident)
 
@@ -117,7 +117,7 @@ class TestSREAgentAnalyze:
             model="mock",
         )
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=fenced_client)
             result = agent.analyze(sample_incident)
 
@@ -127,14 +127,14 @@ class TestSREAgentAnalyze:
 
 class TestToolDispatch:
     def test_dispatch_unknown_tool_returns_error(self, mock_llm_client: MagicMock) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             result = agent._dispatch_tool("nonexistent_tool", {})
         assert "error" in result
         assert "Unknown tool" in result["error"]
 
     def test_dispatch_wraps_exception_in_error(self, mock_llm_client: MagicMock) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             # Patch tool to raise
             with patch.object(agent, "_tool_get_pod_logs", side_effect=RuntimeError("boom")):
@@ -145,7 +145,7 @@ class TestToolDispatch:
         assert "boom" in result["error"]
 
     def test_all_tools_are_registered(self, mock_llm_client: MagicMock) -> None:
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
         handler_names = {
             "get_pod_logs",
@@ -169,7 +169,7 @@ class TestToolImplementations:
         }
         mock_logs.exceptions.ResourceNotFoundException = Exception
 
-        with patch("sre_agent.agent.boto3") as mock_boto3:
+        with patch("eks_ai_ops.agent.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_logs
             mock_boto3.resource.return_value = MagicMock()
             agent = SREAgent(llm_client=mock_llm_client)
@@ -188,7 +188,7 @@ class TestToolImplementations:
         mock_logs.exceptions.ResourceNotFoundException = _FakeNotFound
         mock_logs.filter_log_events.side_effect = _FakeNotFound("not found")
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             agent._logs_client = mock_logs
             result = agent._tool_get_pod_logs("api", "checkout-pod")
@@ -210,7 +210,7 @@ class TestToolImplementations:
             ]
         }
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             agent._cw_client = mock_cw
             result = agent._tool_get_cloudwatch_metrics(
@@ -231,7 +231,7 @@ class TestToolImplementations:
         mock_ddb = MagicMock()
         mock_ddb.Table.return_value = mock_table
 
-        with patch("sre_agent.agent.boto3") as mock_boto3:
+        with patch("eks_ai_ops.agent.boto3") as mock_boto3:
             mock_boto3.resource.return_value = mock_ddb
             mock_boto3.client.return_value = MagicMock()
             agent = SREAgent(llm_client=mock_llm_client)
@@ -246,7 +246,7 @@ class TestToolImplementations:
         mock_ddb = MagicMock()
         mock_ddb.Table.return_value = mock_table
 
-        with patch("sre_agent.agent.boto3") as mock_boto3:
+        with patch("eks_ai_ops.agent.boto3") as mock_boto3:
             mock_boto3.resource.return_value = mock_ddb
             mock_boto3.client.return_value = MagicMock()
             agent = SREAgent(llm_client=mock_llm_client)
@@ -269,7 +269,7 @@ class TestToolImplementations:
             ]
         }
 
-        with patch("sre_agent.agent.boto3"):
+        with patch("eks_ai_ops.agent.boto3"):
             agent = SREAgent(llm_client=mock_llm_client)
             agent._cw_client = mock_cw
             result = agent._tool_list_related_alerts("checkout")
@@ -283,7 +283,7 @@ class TestToolImplementations:
         mock_lambda = MagicMock()
         mock_lambda.invoke.return_value = {"Payload": io.BytesIO(b'{"output": "NAME: pod-abc\\n"}')}
 
-        with patch("sre_agent.agent.boto3") as mock_boto3:
+        with patch("eks_ai_ops.agent.boto3") as mock_boto3:
             mock_boto3.client.return_value = mock_lambda
             mock_boto3.resource.return_value = MagicMock()
             agent = SREAgent(llm_client=mock_llm_client)

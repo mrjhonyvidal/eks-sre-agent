@@ -43,7 +43,7 @@ strands = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["sre_agent*"]
+include = ["eks_ai_ops*"]
 
 # ---------------------------------------------------------------------------
 # Ruff — linting + import sorting + code quality
@@ -90,7 +90,7 @@ ignore = [
 "tests/**" = ["S", "ANN", "N", "E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["sre_agent"]
+known-first-party = ["eks_ai_ops"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -111,7 +111,7 @@ exclude = ["tests/"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = [
-    "--cov=sre_agent",
+    "--cov=eks_ai_ops",
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml:coverage.xml",
@@ -124,7 +124,7 @@ log_cli = true
 log_cli_level = "WARNING"
 
 [tool.coverage.run]
-source = ["src/sre_agent"]
+source = ["src/eks_ai_ops"]
 branch = true
 omit = ["tests/*", "*/conftest.py"]
 

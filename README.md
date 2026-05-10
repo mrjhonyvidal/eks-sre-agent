@@ -35,19 +35,19 @@ graph LR
 
 ### Concrete code mapping
 
-- Proactive Lambda entrypoint: `sre_agent.proactive.handler.handler`
-- Proactive orchestration: `sre_agent.proactive.flow.ProactiveIncidentFlow`
-- Interactive Lambda entrypoint: `sre_agent.interactive.handler.handler`
-- **K8S Orchestrator Agent**: `sre_agent.interactive.orchestrator.K8sOrchestratorAgent`
-- Intent classifier: `sre_agent.interactive.orchestrator.K8sIntentClassifier`
-- **K8S Specialist Agent**: `sre_agent.interactive.strands_agent.InteractiveEKSAgent`
-- MCP adapter: `sre_agent.interactive.mcp_tools`
-- Backward-compatible wrappers: `sre_agent.handler`, `sre_agent.bot_handler`
+- Proactive Lambda entrypoint: `eks_ai_ops.proactive.handler.handler`
+- Proactive orchestration: `eks_ai_ops.proactive.flow.ProactiveIncidentFlow`
+- Interactive Lambda entrypoint: `eks_ai_ops.interactive.handler.handler`
+- **K8S Orchestrator Agent**: `eks_ai_ops.interactive.orchestrator.K8sOrchestratorAgent`
+- Intent classifier: `eks_ai_ops.interactive.orchestrator.K8sIntentClassifier`
+- **K8S Specialist Agent**: `eks_ai_ops.interactive.strands_agent.InteractiveEKSAgent`
+- MCP adapter: `eks_ai_ops.interactive.mcp_tools`
+- Backward-compatible wrappers: `eks_ai_ops.handler`, `eks_ai_ops.bot_handler`
 
 ## Repository structure
 
 ```text
-src/sre_agent/
+src/eks_ai_ops/
   proactive/
     handler.py
     flow.py
@@ -130,7 +130,7 @@ POST {MCP_GATEWAY_URL}/tools/call
 ```
 
 Tools dispatched today: `list_pods`, `describe_resource`, `get_pod_logs`
-(see `src/sre_agent/interactive/mcp_tools.py`).
+(see `src/eks_ai_ops/interactive/mcp_tools.py`).
 
 If `MCP_GATEWAY_URL` is empty, the bot still answers via the LLM-only fallback —
 useful for a first demo without standing up a gateway. Add an API key with
@@ -259,7 +259,7 @@ pytest --no-cov tests/test_orchestrator.py tests/test_bot_handler.py
 
 ```bash
 python -c "
-from sre_agent.proactive.handler import handler
+from eks_ai_ops.proactive.handler import handler
 event = {
   'source': 'aws.cloudwatch',
   'detail': {

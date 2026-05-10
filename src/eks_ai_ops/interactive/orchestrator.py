@@ -7,7 +7,7 @@ from typing import Any
 
 import boto3
 
-from sre_agent.interactive.strands_agent import InteractiveEKSAgent
+from eks_ai_ops.interactive.strands_agent import InteractiveEKSAgent
 
 logger = logging.getLogger(__name__)
 

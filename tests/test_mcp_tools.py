@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 
-from sre_agent.interactive.mcp_tools import (
+from eks_ai_ops.interactive.mcp_tools import (
     MCPToolClient,
     default_eks_mcp_tools,
     dispatch_eks_mcp_tool,
@@ -59,7 +59,7 @@ class TestMCPToolClient:
             captured["headers"] = dict(req.header_items())
             return _Resp()
 
-        with patch("sre_agent.interactive.mcp_tools.urllib.request.urlopen", _fake_urlopen):
+        with patch("eks_ai_ops.interactive.mcp_tools.urllib.request.urlopen", _fake_urlopen):
             result = client.call_tool(
                 server="eks", tool="list_pods", arguments={"namespace": "api"}
             )
@@ -89,7 +89,7 @@ class TestMCPToolClient:
             def read(self) -> bytes:
                 return json.dumps(["a", "b"]).encode()
 
-        with patch("sre_agent.interactive.mcp_tools.urllib.request.urlopen", return_value=_Resp()):
+        with patch("eks_ai_ops.interactive.mcp_tools.urllib.request.urlopen", return_value=_Resp()):
             result = client.call_tool(server="eks", tool="t", arguments={})
 
         assert result == {"result": ["a", "b"]}
@@ -117,7 +117,7 @@ class TestMCPToolClient:
             captured["headers"] = dict(req.header_items())
             return _Resp()
 
-        with patch("sre_agent.interactive.mcp_tools.urllib.request.urlopen", _fake_urlopen):
+        with patch("eks_ai_ops.interactive.mcp_tools.urllib.request.urlopen", _fake_urlopen):
             client.call_tool(server="eks", tool="t", arguments={})
 
         assert "Authorization" not in captured["headers"]

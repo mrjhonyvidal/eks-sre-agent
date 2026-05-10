@@ -75,7 +75,7 @@ jobs:
         run: |
           sam deploy \
             --template-file infrastructure/template.yaml \
-            --stack-name sre-agent \
+            --stack-name eks-ai-ops-toolkit \
             --capabilities CAPABILITY_IAM \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
@@ -90,6 +90,6 @@ jobs:
       - name: Show stack outputs
         run: |
           aws cloudformation describe-stacks \
-            --stack-name sre-agent \
+            --stack-name eks-ai-ops-toolkit \
             --query "Stacks[0].Outputs" \
             --output table

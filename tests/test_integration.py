@@ -60,12 +60,12 @@ def test_incident_persisted_to_dynamodb() -> None:
     }
 
     with (
-        patch("sre_agent.enricher.boto3") as mock_enricher_boto3,
-        patch("sre_agent.proactive.flow.SREAgent") as mock_agent_cls,
-        patch("sre_agent.proactive.flow.SlackClient") as mock_slack_cls,
-        patch("sre_agent.proactive.flow.GitHubClient") as mock_gh_cls,
+        patch("eks_ai_ops.enricher.boto3") as mock_enricher_boto3,
+        patch("eks_ai_ops.proactive.flow.SREAgent") as mock_agent_cls,
+        patch("eks_ai_ops.proactive.flow.SlackClient") as mock_slack_cls,
+        patch("eks_ai_ops.proactive.flow.GitHubClient") as mock_gh_cls,
         patch(
-            "sre_agent.proactive.flow.boto3.resource",
+            "eks_ai_ops.proactive.flow.boto3.resource",
             return_value=MagicMock(Table=MagicMock(return_value=table)),
         ),
     ):
@@ -90,7 +90,7 @@ def test_incident_persisted_to_dynamodb() -> None:
         mock_agent_cls.return_value = mock_agent
         mock_gh_cls.return_value = MagicMock()
 
-        from sre_agent.proactive.handler import handler
+        from eks_ai_ops.proactive.handler import handler
 
         result = handler(event, None)
 
@@ -123,12 +123,12 @@ def test_deduplication_skips_second_invocation() -> None:
     )
 
     with (
-        patch("sre_agent.proactive.flow.enrich_event") as mock_enrich,
+        patch("eks_ai_ops.proactive.flow.enrich_event") as mock_enrich,
         patch(
-            "sre_agent.proactive.flow.ProactiveIncidentFlow._incident_id", return_value=incident_id
+            "eks_ai_ops.proactive.flow.ProactiveIncidentFlow._incident_id", return_value=incident_id
         ),
         patch(
-            "sre_agent.proactive.flow.boto3.resource",
+            "eks_ai_ops.proactive.flow.boto3.resource",
             return_value=MagicMock(Table=MagicMock(return_value=table)),
         ),
     ):
@@ -140,7 +140,7 @@ def test_deduplication_skips_second_invocation() -> None:
             "resource_name": "svc",
         }
 
-        from sre_agent.proactive.handler import handler
+        from eks_ai_ops.proactive.handler import handler
 
         result = handler({}, None)
 
@@ -153,12 +153,12 @@ def test_incident_record_has_correct_ttl() -> None:
     table = _create_incident_table()
 
     with (
-        patch("sre_agent.enricher.boto3") as mock_enricher_boto3,
-        patch("sre_agent.proactive.flow.SREAgent") as mock_agent_cls,
-        patch("sre_agent.proactive.flow.SlackClient") as mock_slack_cls,
-        patch("sre_agent.proactive.flow.GitHubClient"),
+        patch("eks_ai_ops.enricher.boto3") as mock_enricher_boto3,
+        patch("eks_ai_ops.proactive.flow.SREAgent") as mock_agent_cls,
+        patch("eks_ai_ops.proactive.flow.SlackClient") as mock_slack_cls,
+        patch("eks_ai_ops.proactive.flow.GitHubClient"),
         patch(
-            "sre_agent.proactive.flow.boto3.resource",
+            "eks_ai_ops.proactive.flow.boto3.resource",
             return_value=MagicMock(Table=MagicMock(return_value=table)),
         ),
     ):
@@ -193,7 +193,7 @@ def test_incident_record_has_correct_ttl() -> None:
             },
         }
 
-        from sre_agent.proactive.handler import handler
+        from eks_ai_ops.proactive.handler import handler
 
         result = handler(event, None)
 
@@ -225,15 +225,15 @@ def test_mention_looks_up_incident_by_thread_ts() -> None:
     )
 
     with (
-        patch("sre_agent.interactive.handler._get_incident_table", return_value=table),
-        patch("sre_agent.interactive.handler._get_orchestrator") as mock_orchestrator_get,
-        patch("sre_agent.interactive.handler._post_reply") as mock_reply,
+        patch("eks_ai_ops.interactive.handler._get_incident_table", return_value=table),
+        patch("eks_ai_ops.interactive.handler._get_orchestrator") as mock_orchestrator_get,
+        patch("eks_ai_ops.interactive.handler._post_reply") as mock_reply,
     ):
         mock_orchestrator = MagicMock()
         mock_orchestrator.respond.return_value = "Root cause is OOMKill"
         mock_orchestrator_get.return_value = mock_orchestrator
 
-        from sre_agent.bot_handler import _handle_mention
+        from eks_ai_ops.bot_handler import _handle_mention
 
         _handle_mention(
             {
@@ -262,10 +262,10 @@ def test_resolve_action_updates_dynamodb() -> None:
     )
 
     with (
-        patch("sre_agent.interactive.handler._get_incident_table", return_value=table),
-        patch("sre_agent.bot_handler._post_reply"),
+        patch("eks_ai_ops.interactive.handler._get_incident_table", return_value=table),
+        patch("eks_ai_ops.bot_handler._post_reply"),
     ):
-        from sre_agent.bot_handler import _update_incident_status
+        from eks_ai_ops.bot_handler import _update_incident_status
 
         _update_incident_status("inc_resolve_test", "resolved", "U_ENGINEER")
 

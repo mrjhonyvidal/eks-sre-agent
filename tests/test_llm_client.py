@@ -1,4 +1,4 @@
-"""Unit tests for sre_agent/llm_client.py."""
+"""Unit tests for eks_ai_ops/llm_client.py."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sre_agent.llm_client import (
+from eks_ai_ops.llm_client import (
     AnthropicClient,
     BedrockClient,
     ContentBlock,

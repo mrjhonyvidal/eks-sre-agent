@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sre_agent.interactive.strands_agent import InteractiveEKSAgent
-from sre_agent.llm_client import ContentBlock, MessageResponse
+from eks_ai_ops.interactive.strands_agent import InteractiveEKSAgent
+from eks_ai_ops.llm_client import ContentBlock, MessageResponse
 
 
 def _make_agent(monkeypatch: pytest.MonkeyPatch, backend: str = "llm") -> InteractiveEKSAgent:
@@ -16,7 +16,7 @@ def _make_agent(monkeypatch: pytest.MonkeyPatch, backend: str = "llm") -> Intera
     monkeypatch.setenv("EKS_MCP_SERVER", "eks")
     monkeypatch.setenv("MCP_GATEWAY_URL", "https://mcp.example.com")
 
-    with patch("sre_agent.interactive.strands_agent.get_llm_client") as get_llm:
+    with patch("eks_ai_ops.interactive.strands_agent.get_llm_client") as get_llm:
         get_llm.return_value = MagicMock()
         agent = InteractiveEKSAgent()
     return agent
@@ -60,7 +60,7 @@ class TestInteractiveEKSAgentLLMLoop:
         agent._llm.create_message.side_effect = responses
 
         with patch(
-            "sre_agent.interactive.strands_agent.dispatch_eks_mcp_tool",
+            "eks_ai_ops.interactive.strands_agent.dispatch_eks_mcp_tool",
             return_value={"pods": []},
         ) as dispatcher:
             result = agent.answer(question="pods?", incident_context={"id": "1"})
@@ -89,7 +89,7 @@ class TestInteractiveEKSAgentLLMLoop:
         )
 
         with patch(
-            "sre_agent.interactive.strands_agent.dispatch_eks_mcp_tool",
+            "eks_ai_ops.interactive.strands_agent.dispatch_eks_mcp_tool",
             return_value={"pods": []},
         ):
             result = agent.answer(question="loop", incident_context={})

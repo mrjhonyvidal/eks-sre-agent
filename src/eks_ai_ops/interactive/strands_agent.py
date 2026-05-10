@@ -5,13 +5,13 @@ import logging
 import os
 from typing import Any
 
-from sre_agent.interactive.mcp_tools import (
+from eks_ai_ops.interactive.mcp_tools import (
     MCPToolClient,
     default_eks_mcp_tools,
     dispatch_eks_mcp_tool,
 )
-from sre_agent.llm_client import get_llm_client
-from sre_agent.shared.prompts import INTERACTIVE_SYSTEM_PROMPT
+from eks_ai_ops.llm_client import get_llm_client
+from eks_ai_ops.shared.prompts import INTERACTIVE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 

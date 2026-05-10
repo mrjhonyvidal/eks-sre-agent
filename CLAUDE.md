@@ -13,12 +13,12 @@ This repo provides two reusable AWS EKS AI capabilities in one codebase:
 
 ### Proactive path
 
-EventBridge/CloudWatch/EKS events -> `sre_agent.proactive.handler` -> `ProactiveIncidentFlow` ->
+EventBridge/CloudWatch/EKS events -> `eks_ai_ops.proactive.handler` -> `ProactiveIncidentFlow` ->
 `SREAgent` -> Slack update + DynamoDB persistence + optional GitHub fix PR.
 
 ### Interactive path
 
-Slack mention -> `sre_agent.interactive.handler` -> `K8sOrchestratorAgent` ->
+Slack mention -> `eks_ai_ops.interactive.handler` -> `K8sOrchestratorAgent` ->
 - non-K8s intent: early exit message
 - K8s troubleshooting intent: route to `InteractiveEKSAgent` specialist ->
 MCP-backed EKS tools (`interactive/mcp_tools.py`) -> thread reply.
@@ -28,7 +28,7 @@ Intent classification supports keyword fallback and optional Nova Micro via Bedr
 ## Important module map
 
 ```text
-src/sre_agent/
+src/eks_ai_ops/
   proactive/
     handler.py
     flow.py

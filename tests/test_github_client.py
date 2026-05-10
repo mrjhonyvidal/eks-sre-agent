@@ -1,4 +1,4 @@
-"""Unit tests for sre_agent/github_client.py."""
+"""Unit tests for eks_ai_ops/github_client.py."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from sre_agent.github_client import GitHubClient
+from eks_ai_ops.github_client import GitHubClient
 
 
 @pytest.fixture()
