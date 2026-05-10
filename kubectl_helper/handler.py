@@ -116,14 +116,14 @@ def _write_kubeconfig(cluster_name: str) -> str | None:
             ],
             "contexts": [
                 {
-                    "context": {"cluster": cluster_name, "user": "sre-agent"},
-                    "name": "sre-agent",
+                    "context": {"cluster": cluster_name, "user": "eks-ai-ops-toolkit"},
+                    "name": "eks-ai-ops-toolkit",
                 }
             ],
-            "current-context": "sre-agent",
+            "current-context": "eks-ai-ops-toolkit",
             "users": [
                 {
-                    "name": "sre-agent",
+                    "name": "eks-ai-ops-toolkit",
                     "user": {"token": token},
                 }
             ],

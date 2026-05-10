@@ -46,19 +46,19 @@ Parameters:
   # Sensitive values — store in SSM Parameter Store / Secrets Manager
   AnthropicApiKeyParam:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /sre-agent/anthropic-api-key
+    Default: /eks-ai-ops-toolkit/anthropic-api-key
 
   SlackBotTokenParam:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /sre-agent/slack-bot-token
+    Default: /eks-ai-ops-toolkit/slack-bot-token
 
   SlackSigningSecretParam:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /sre-agent/slack-signing-secret
+    Default: /eks-ai-ops-toolkit/slack-signing-secret
 
   GitHubTokenParam:
     Type: AWS::SSM::Parameter::Value<String>
-    Default: /sre-agent/github-token
+    Default: /eks-ai-ops-toolkit/github-token
 
 # ------------------------------------------------------------------ #
 # Globals                                                             #
@@ -146,7 +146,7 @@ Resources:
   SREAgentFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: sre-agent
+      FunctionName: eks-ai-ops-toolkit
       CodeUri: src/sre_agent/
       Handler: handler.handler
       Description: Analyses EKS/CloudWatch incidents using Claude
@@ -228,8 +228,8 @@ Resources:
         SecurityGroupIds:
           - !Ref KubectlSecurityGroup
         SubnetIds:
-          - !Sub "{{resolve:ssm:/sre-agent/eks-private-subnet-1}}"
-          - !Sub "{{resolve:ssm:/sre-agent/eks-private-subnet-2}}"
+          - !Sub "{{resolve:ssm:/eks-ai-ops-toolkit/eks-private-subnet-1}}"
+          - !Sub "{{resolve:ssm:/eks-ai-ops-toolkit/eks-private-subnet-2}}"
       Policies:
         - Statement:
             - Effect: Allow
@@ -242,7 +242,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: kubectl helper Lambda SG
-      VpcId: !Sub "{{resolve:ssm:/sre-agent/eks-vpc-id}}"
+      VpcId: !Sub "{{resolve:ssm:/eks-ai-ops-toolkit/eks-vpc-id}}"
       SecurityGroupEgress:
         - IpProtocol: tcp
           FromPort: 443

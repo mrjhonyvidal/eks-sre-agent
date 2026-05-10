@@ -42,19 +42,19 @@ build:  ## SAM build (validates template + packages Lambda code)
 deploy: build  ## SAM guided deploy (prompts for parameters)
 	sam deploy --guided \
 	  --template-file infrastructure/template.yaml \
-	  --stack-name sre-agent \
+	  --stack-name eks-ai-ops-toolkit \
 	  --capabilities CAPABILITY_IAM
 
 deploy-fast: build  ## SAM deploy without re-prompting (uses samconfig.toml)
 	sam deploy \
 	  --template-file infrastructure/template.yaml \
-	  --stack-name sre-agent \
+	  --stack-name eks-ai-ops-toolkit \
 	  --capabilities CAPABILITY_IAM \
 	  --no-confirm-changeset \
 	  --no-fail-on-empty-changeset
 
 logs-agent:  ## Tail SRE Agent Lambda logs
-	aws logs tail /aws/lambda/sre-agent --follow
+	aws logs tail /aws/lambda/eks-ai-ops-toolkit --follow
 
 logs-bot:  ## Tail Slack Bot Lambda logs
 	aws logs tail /aws/lambda/sre-slack-bot --follow
@@ -72,13 +72,13 @@ coverage-html:  ## Open HTML coverage report
 setup-ssm:  ## Interactive SSM parameter setup (requires AWS profile)
 	@echo "Setting up SSM parameters..."
 	@read -p "Slack Bot Token (xoxb-...): " SLACK_TOKEN && \
-	  aws ssm put-parameter --name /sre-agent/slack-bot-token --value "$$SLACK_TOKEN" --type SecureString --overwrite
+	  aws ssm put-parameter --name /eks-ai-ops-toolkit/slack-bot-token --value "$$SLACK_TOKEN" --type SecureString --overwrite
 	@read -p "Slack Signing Secret: " SLACK_SECRET && \
-	  aws ssm put-parameter --name /sre-agent/slack-signing-secret --value "$$SLACK_SECRET" --type SecureString --overwrite
+	  aws ssm put-parameter --name /eks-ai-ops-toolkit/slack-signing-secret --value "$$SLACK_SECRET" --type SecureString --overwrite
 	@read -p "GitHub Token (github_pat_...): " GH_TOKEN && \
-	  aws ssm put-parameter --name /sre-agent/github-token --value "$$GH_TOKEN" --type SecureString --overwrite
+	  aws ssm put-parameter --name /eks-ai-ops-toolkit/github-token --value "$$GH_TOKEN" --type SecureString --overwrite
 	@read -p "Anthropic API Key (sk-ant-..., press Enter to skip for Bedrock): " ANTHROPIC_KEY && \
-	  [ -n "$$ANTHROPIC_KEY" ] && aws ssm put-parameter --name /sre-agent/anthropic-api-key --value "$$ANTHROPIC_KEY" --type SecureString --overwrite || echo "Skipped Anthropic key"
+	  [ -n "$$ANTHROPIC_KEY" ] && aws ssm put-parameter --name /eks-ai-ops-toolkit/anthropic-api-key --value "$$ANTHROPIC_KEY" --type SecureString --overwrite || echo "Skipped Anthropic key"
 	@echo "✅ SSM parameters set. Run 'make deploy' next."
 
 help:  ## Show this help

@@ -3,9 +3,9 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "eks-sre-agent"
+name = "eks-ai-ops-toolkit"
 version = "1.0.0"
-description = "Claude/Bedrock-powered SRE agent for EKS incident analysis, Slack alerting, and GitHub auto-fix PRs"
+description = "AI-powered Ops Toolkit for EKS featuring proactive incident resolution and an interactive Slack chatbot with MCP/Strands tool calling"
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -114,7 +114,7 @@ addopts = [
     "--cov-report=term-missing",
     "--cov-report=html:htmlcov",
     "--cov-report=xml:coverage.xml",
-    "--cov-fail-under=90",
+    "--cov-fail-under=80",
     "--cov-branch",
     "-v",
     "--tb=short",

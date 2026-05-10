@@ -55,7 +55,7 @@ class GitHubClient:
                 branch=branch_name,
                 path=file_info["path"],
                 content=file_info["content"],
-                message=f"sre-agent: {file_info.get('description', 'auto-fix')}",
+                message=f"eks-ai-ops-toolkit: {file_info.get('description', 'auto-fix')}",
             )
 
         # Open the PR

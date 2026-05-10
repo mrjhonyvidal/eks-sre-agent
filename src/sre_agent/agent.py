@@ -133,7 +133,7 @@ _FALLBACK_RESPONSE: dict[str, Any] = {
     "fix_description": "Manual investigation required. Review CloudWatch Logs for raw agent output.",
     "pr_files": [],
     "runbook_steps": [
-        "Check CloudWatch Logs for the sre-agent Lambda function.",
+        "Check CloudWatch Logs for the eks-ai-ops-toolkit Lambda function.",
         "Review the incident context in DynamoDB sre-incidents table.",
         "Escalate to the on-call engineer if the issue persists.",
     ],
