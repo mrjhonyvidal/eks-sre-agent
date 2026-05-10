@@ -40,7 +40,7 @@ validate:  ## SAM template + Python lint sanity check
 	sam validate --lint --template-file infrastructure/template.yaml
 
 build:  ## SAM build (validates template + packages Lambda code)
-	sam build --template-file infrastructure/template.yaml --parallel
+	sam build --template-file infrastructure/template.yaml --base-dir . --parallel
 
 deploy: build  ## SAM guided deploy (prompts for parameters)
 	sam deploy --guided \
