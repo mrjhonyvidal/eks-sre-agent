@@ -25,6 +25,7 @@ from typing import Any
 import boto3
 
 from sre_agent.llm_client import BaseLLMClient, ContentBlock, get_llm_client
+from sre_agent.shared.prompts import PROACTIVE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -123,27 +124,7 @@ TOOLS: list[dict[str, Any]] = [
     },
 ]
 
-SYSTEM_PROMPT = """You are an expert SRE AI agent embedded in an AWS/EKS environment.
-Your job is to investigate infrastructure incidents, identify root causes, and propose fixes.
-
-Guidelines:
-- Use the available tools to gather evidence before concluding.
-- Be specific: name exact pods, error messages, metrics, and timestamps.
-- Classify severity as: critical (service down), high (degraded), medium (warning), low (noise).
-- For fix_type "auto" you MUST produce pr_files with concrete YAML/config patches.
-- For fix_type "manual" explain exactly what a human should do, step by step.
-- Keep runbook_steps concise — an on-call engineer at 3am should be able to execute them.
-
-Respond ONLY with valid JSON matching this schema (no markdown fences):
-{
-  "root_cause": "string",
-  "severity": "critical|high|medium|low",
-  "fix_type": "auto|manual",
-  "fix_description": "string",
-  "pr_files": [{"path": "string", "content": "string", "description": "string"}],
-  "runbook_steps": ["string"]
-}
-"""
+SYSTEM_PROMPT = PROACTIVE_SYSTEM_PROMPT
 
 _FALLBACK_RESPONSE: dict[str, Any] = {
     "root_cause": "Analysis timed out after maximum tool-call rounds",

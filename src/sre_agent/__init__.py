@@ -11,7 +11,9 @@ Set the LLM_PROVIDER environment variable to select the backend:
 """
 
 __version__ = "1.0.0"
-__all__ = ["SREAgent", "get_llm_client"]
+__all__ = ["InteractiveEKSAgent", "ProactiveIncidentFlow", "SREAgent", "get_llm_client"]
 
 from sre_agent.agent import SREAgent
+from sre_agent.interactive import InteractiveEKSAgent
 from sre_agent.llm_client import get_llm_client
+from sre_agent.proactive import ProactiveIncidentFlow
