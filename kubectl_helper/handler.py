@@ -131,7 +131,8 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 def _describe_cluster(name: str) -> dict[str, Any]:
     region = os.environ.get("AWS_REGION", "us-east-1")
     eks = boto3.client("eks", region_name=region)
-    return eks.describe_cluster(name=name)["cluster"]
+    # Cast to dict for mypy compatibility
+    return dict(eks.describe_cluster(name=name)["cluster"])
 
 
 def _get_eks_token(cluster_name: str, region: str) -> str:
@@ -143,12 +144,16 @@ def _get_eks_token(cluster_name: str, region: str) -> str:
     """
     session = boto3.session.Session()
     client = session.client("sts", region_name=region)
+    creds = session.get_credentials()
+    if creds is None:
+        raise RuntimeError("No AWS credentials found for EKS token generation")
+    frozen_creds = creds.get_frozen_credentials()
     signer = RequestSigner(
         client.meta.service_model.service_id,
         region,
         "sts",
         "v4",
-        session.get_credentials(),
+        frozen_creds,
         client.meta.events,
     )
     params = {
@@ -182,7 +187,7 @@ def _kube_get(url: str, *, token: str, ca_path: str) -> str:
         method="GET",
     )
     with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:  # noqa: S310
-        return resp.read().decode("utf-8", errors="replace")
+        return str(resp.read().decode("utf-8", errors="replace"))
 
 
 def _summarize(resource_type: str, data: dict[str, Any]) -> dict[str, Any]:
