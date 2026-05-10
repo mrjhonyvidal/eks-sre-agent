@@ -93,15 +93,10 @@ def _handle_mention(event: dict[str, Any]) -> None:
     user = event.get("user", "unknown")
     question = text.split(">", 1)[-1].strip() if ">" in text else text.strip()
 
+    # Pull incident context if this is a reply inside an incident thread.
+    # When absent (e.g. top-level channel mention) we still answer —
+    # the orchestrator gates non-K8s questions on keywords.
     incident = _find_incident_from_thread(thread_ts) or {}
-    if not incident:
-        _post_reply(
-            channel,
-            thread_ts,
-            "I couldn't find an active incident in this thread. "
-            "Use me in an incident thread or provide an incident ID.",
-        )
-        return
 
     try:
         answer = _get_orchestrator().respond(question=question, incident_context=incident)

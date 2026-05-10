@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -128,7 +128,12 @@ class TestDefaultEksMcpTools:
         client = MCPToolClient()
         tools = default_eks_mcp_tools(client)
         names = {t["name"] for t in tools}
-        assert names == {"mcp_get_pods", "mcp_describe_resource", "mcp_get_logs"}
+        assert names == {
+            "mcp_get_pods",
+            "mcp_describe_resource",
+            "mcp_get_logs",
+            "kubectl_describe",
+        }
         for tool in tools:
             assert "description" in tool
             assert tool["input_schema"]["type"] == "object"
@@ -204,6 +209,40 @@ class TestDispatchEksMcpTool:
                 "tail_lines": 50,
             },
         )
+
+    def test_kubectl_describe_invokes_helper_lambda(self) -> None:
+        client = MCPToolClient()
+        fake_payload = MagicMock()
+        fake_payload.read.return_value = b'{"output": "Name: my-pod\\n"}'
+        fake_lambda = MagicMock()
+        fake_lambda.invoke.return_value = {"Payload": fake_payload}
+        with (
+            patch.dict(
+                "os.environ", {"KUBECTL_LAMBDA": "sre-kubectl-helper", "CLUSTER_NAME": "demo"}
+            ),
+            patch("eks_ai_ops.interactive.mcp_tools.boto3.client", return_value=fake_lambda),
+        ):
+            result = dispatch_eks_mcp_tool(
+                client=client,
+                name="kubectl_describe",
+                inputs={"resource_type": "pod", "resource_name": "my-pod", "namespace": "api"},
+                server="eks",
+            )
+        assert result == {"output": "Name: my-pod\n"}
+        fake_lambda.invoke.assert_called_once()
+        assert fake_lambda.invoke.call_args.kwargs["FunctionName"] == "sre-kubectl-helper"
+
+    def test_kubectl_describe_without_env_returns_error(self) -> None:
+        client = MCPToolClient()
+        with patch.dict("os.environ", {}, clear=True):
+            result = dispatch_eks_mcp_tool(
+                client=client,
+                name="kubectl_describe",
+                inputs={"resource_type": "pod", "resource_name": "x"},
+                server="eks",
+            )
+        assert "error" in result
+        assert "KUBECTL_LAMBDA" in result["error"]
 
 
 # Suppress unused-import warning for io (kept for forward compat in tests)

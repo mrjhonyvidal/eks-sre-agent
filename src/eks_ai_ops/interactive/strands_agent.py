@@ -6,6 +6,14 @@ import os
 import re
 from typing import Any
 
+from eks_ai_ops.interactive.mcp_tools import (
+    MCPToolClient,
+    default_eks_mcp_tools,
+    dispatch_eks_mcp_tool,
+)
+from eks_ai_ops.llm_client import get_llm_client
+from eks_ai_ops.shared.prompts import INTERACTIVE_SYSTEM_PROMPT
+
 _THINKING_RE = re.compile(r"<think(?:ing)?>.*?</think(?:ing)?>", re.DOTALL | re.IGNORECASE)
 
 
@@ -14,13 +22,6 @@ def _sanitize(text: str) -> str:
     cleaned = _THINKING_RE.sub("", text or "").strip()
     return cleaned or "(no response)"
 
-from eks_ai_ops.interactive.mcp_tools import (
-    MCPToolClient,
-    default_eks_mcp_tools,
-    dispatch_eks_mcp_tool,
-)
-from eks_ai_ops.llm_client import get_llm_client
-from eks_ai_ops.shared.prompts import INTERACTIVE_SYSTEM_PROMPT
 
 logger = logging.getLogger(__name__)
 

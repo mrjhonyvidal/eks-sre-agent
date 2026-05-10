@@ -121,6 +121,8 @@ class TestHandleMention:
         assert "Here is your answer" in mock_reply.call_args[0][2]
 
     def test_replies_with_not_found_when_no_incident(self) -> None:
+        """Non-K8s top-level mention with no incident context falls through to
+        the orchestrator's keyword gate, which politely rejects it."""
         from eks_ai_ops.bot_handler import _handle_mention
 
         with (
@@ -132,7 +134,7 @@ class TestHandleMention:
             )
 
         mock_reply.assert_called_once()
-        assert "couldn't find" in mock_reply.call_args[0][2].lower()
+        assert "kubernetes" in mock_reply.call_args[0][2].lower()
 
     def test_handles_llm_exception_gracefully(self) -> None:
         from eks_ai_ops.bot_handler import _handle_mention

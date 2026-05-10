@@ -6,6 +6,8 @@ import os
 import urllib.request
 from typing import Any
 
+import boto3
+
 logger = logging.getLogger(__name__)
 
 
@@ -82,6 +84,26 @@ def default_eks_mcp_tools(client: MCPToolClient) -> list[dict[str, Any]]:
                 "required": ["pod_name"],
             },
         },
+        {
+            "name": "kubectl_describe",
+            "description": (
+                "Run 'kubectl describe' against the live EKS cluster via the in-VPC "
+                "kubectl_helper Lambda. Works without an MCP gateway. Use this to get "
+                "real cluster state for a pod, deployment, node, service, or hpa."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "resource_type": {
+                        "type": "string",
+                        "enum": ["pod", "deployment", "node", "service", "hpa"],
+                    },
+                    "resource_name": {"type": "string"},
+                    "namespace": {"type": "string", "default": "default"},
+                },
+                "required": ["resource_type", "resource_name"],
+            },
+        },
     ]
 
 
@@ -92,6 +114,9 @@ def dispatch_eks_mcp_tool(
     inputs: dict[str, Any],
     server: str,
 ) -> dict[str, Any]:
+    if name == "kubectl_describe":
+        return _invoke_kubectl_describe(inputs)
+
     mapping = {
         "mcp_get_pods": ("list_pods", {"namespace": inputs.get("namespace", "default")}),
         "mcp_describe_resource": (
@@ -117,3 +142,27 @@ def dispatch_eks_mcp_tool(
 
     tool_name, arguments = tool_call
     return client.call_tool(server=server, tool=tool_name, arguments=arguments)
+
+
+def _invoke_kubectl_describe(inputs: dict[str, Any]) -> dict[str, Any]:
+    """Direct Lambda invoke of the in-VPC kubectl_helper. No MCP gateway needed."""
+    fn = os.environ.get("KUBECTL_LAMBDA", "")
+    if not fn:
+        return {"error": "KUBECTL_LAMBDA env var not set; cannot run kubectl describe."}
+    payload = {
+        "resource_type": inputs.get("resource_type", "pod"),
+        "resource_name": inputs.get("resource_name", ""),
+        "namespace": inputs.get("namespace", "default"),
+        "cluster": os.environ.get("CLUSTER_NAME", ""),
+    }
+    try:
+        client = boto3.client("lambda")
+        resp = client.invoke(FunctionName=fn, Payload=json.dumps(payload).encode())
+        body = resp["Payload"].read().decode()
+        try:
+            return json.loads(body)
+        except json.JSONDecodeError:
+            return {"output": body}
+    except Exception as exc:
+        logger.exception("kubectl_helper invoke failed")
+        return {"error": f"kubectl_helper invoke failed: {exc}"}
