@@ -323,3 +323,51 @@ If already configured and iterating:
 ```bash
 make deploy-fast
 ```
+
+## Cleanup and Teardown
+
+When you're done using the toolkit, remove all AWS resources to avoid unnecessary charges:
+
+### Basic Cleanup
+
+Delete the main CloudFormation stack and associated resources:
+
+```bash
+make destroy-confirm
+```
+
+This removes:
+- Lambda functions
+- DynamoDB tables (marked for retention)
+- CloudWatch log groups
+- SSM parameters
+- CloudWatch alarms
+
+### Complete Cleanup
+
+To also delete EKS cluster and all EC2 instances (if deployed with eksctl):
+
+```bash
+make destroy-all
+```
+
+### Verify Cleanup
+
+Check that all resources have been deleted:
+
+```bash
+make verify-cleanup
+```
+
+### Detailed Cleanup Guide
+
+For comprehensive instructions, troubleshooting, and step-by-step cleanup of individual resources, see [CLEANUP.md](./CLEANUP.md).
+
+### Cost Considerations
+
+- EKS clusters charge hourly (plus data transfer costs)
+- EC2 instances charge by the second
+- NAT gateways charge hourly
+- Data transfer across AZs incurs charges
+
+**Recommendation**: Run `make destroy-confirm` or `make destroy-all` when not actively developing to avoid unexpected AWS bills.

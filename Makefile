@@ -1,4 +1,4 @@
-.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-trigger destroy-confirm
+.PHONY: install test lint format build deploy clean help validate destroy destroy-stack destroy-data destroy-trigger destroy-confirm destroy-all destroy-eks verify-cleanup
 
 ## ── Install ─────────────────────────────────────────────────────────────────────
 install:  ## Install all dependencies (runtime + dev tools)
@@ -112,6 +112,46 @@ destroy-confirm:  ## Same as 'destroy' but ASKS first (recommended)
 	@read -p "Delete stack '$(STACK)' + DynamoDB + SSM + log groups in $(REGION)? [y/N] " yn && \
 	  [ "$$yn" = "y" ] || [ "$$yn" = "Y" ] || (echo "Aborted." && exit 1)
 	@$(MAKE) destroy STACK=$(STACK) REGION=$(REGION)
+
+destroy-eks:  ## Delete EKS cluster and nodegroup stacks (eksctl-managed)
+	@echo "→ Disabling termination protection on EKS stacks..."
+	-aws cloudformation update-termination-protection --no-enable-termination-protection \
+	  --stack-name eksctl-eks-ai-ops-nodegroup-ng-632887e6 --region $(REGION) 2>/dev/null
+	-aws cloudformation update-termination-protection --no-enable-termination-protection \
+	  --stack-name eksctl-eks-ai-ops-cluster --region $(REGION) 2>/dev/null
+	@echo "→ Deleting EKS stacks (this may take 10+ minutes)..."
+	-aws cloudformation delete-stack --stack-name eksctl-eks-ai-ops-nodegroup-ng-632887e6 --region $(REGION)
+	-aws cloudformation delete-stack --stack-name eksctl-eks-ai-ops-cluster --region $(REGION)
+
+destroy-ec2:  ## Terminate all EC2 instances (related to this project)
+	@echo "→ Terminating EC2 instances..."
+	-aws ec2 describe-instances --query 'Reservations[].Instances[?State.Name==`running`].InstanceId' --region $(REGION) | \
+	  xargs -I {} aws ec2 terminate-instances --instance-ids {} --region $(REGION) 2>/dev/null
+
+destroy-all: destroy-confirm destroy-eks destroy-ec2  ## ⚠️ NUCLEAR: Delete everything (toolkit + EKS + EC2 + data)
+	@echo ""
+	@echo "✅ Full teardown initiated. Stacks may take 10+ minutes to delete."
+	@echo "Monitor progress with: make verify-cleanup REGION=$(REGION)"
+	@echo ""
+	@echo "See CLEANUP.md for detailed information and troubleshooting."
+
+verify-cleanup:  ## Verify all resources have been deleted
+	@echo "=== CloudFormation Stacks ==="
+	@aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE --region $(REGION) --query 'StackSummaries[].[StackName,StackStatus]'
+	@echo ""
+	@echo "=== Running EC2 Instances ==="
+	@aws ec2 describe-instances --query 'Reservations[].Instances[?State.Name==`running`].[InstanceId,InstanceType]' --region $(REGION)
+	@echo ""
+	@echo "=== Lambda Functions ==="
+	@aws lambda list-functions --region $(REGION) --query 'Functions[].FunctionName'
+	@echo ""
+	@echo "=== DynamoDB Tables ==="
+	@aws dynamodb list-tables --region $(REGION) --query 'TableNames[]'
+	@echo ""
+	@echo "=== S3 Buckets ==="
+	@aws s3 ls
+	@echo ""
+	@echo "If all lists are empty, cleanup is complete!"
 
 coverage-html:  ## Open HTML coverage report
 	pytest --cov-report=html --no-cov-on-fail
